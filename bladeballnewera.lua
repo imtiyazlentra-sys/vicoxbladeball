@@ -710,100 +710,110 @@ end
 local plrs = game:GetService("Players")
 local plr = plrs.LocalPlayer
 local rs = game:GetService("ReplicatedStorage")
-local swordInstancesInstance = rs:WaitForChild("Shared",9e9):WaitForChild("ReplicatedInstances",9e9):WaitForChild("Swords",9e9)
+local swordInstancesInstance = rs:WaitForChild("Shared", 9e9):WaitForChild("ReplicatedInstances", 9e9):WaitForChild("Swords", 9e9)
 local swordInstances = require(swordInstancesInstance)
 
 local swordsController
-
-while task.wait() and (not swordsController) do
-    for i,v in getconnections(rs.Remotes.FireSwordInfo.OnClientEvent) do
+repeat
+    task.wait()
+    for _, v in getconnections(rs.Remotes.FireSwordInfo.OnClientEvent) do
         if v.Function and islclosure(v.Function) then
-            local upvalues = getupvalues(v.Function)
-            if #upvalues == 1 and type(upvalues[1]) == "table" then
-                swordsController = upvalues[1]
+            local ups = getupvalues(v.Function)
+            if #ups >= 1 and type(ups[1]) == "table" then
+                swordsController = ups[1]
                 break
             end
         end
     end
+until swordsController
+
+-- Ambil nama slash effect dari sword yang dipilih
+local function getSlashName(swordName)
+    if swordName == "" then return "SlashEffect" end
+    local data = swordInstances:GetSword(swordName)
+    return (data and data.SlashName) or "SlashEffect"
 end
 
-function getSlashName(swordName)
-    local slashName = swordInstances:GetSword(swordName)
-    return (slashName and slashName.SlashName) or "SlashEffect"
-end
+getgenv().slashName = "SlashEffect"
 
-function setSword()
+-- Fungsi utama equip sword custom (TANPA MERUSAK UPVALUE!)
+local function setSword()
     if not getgenv().skinChanger then return end
-    
-    setupvalue(rawget(swordInstances,"EquipSwordTo"),2,false)
-    
-    swordInstances:EquipSwordTo(plr.Character, getgenv().swordModel)
-    swordsController:SetSword(getgenv().swordAnimations)
+    if getgenv().swordModel == "" then return end
+
+    local char = plr.Character
+    if not char then return end
+
+    local targetName = getgenv().swordModel
+
+    -- Hapus sword lain yang bukan target
+    for _, v in char:GetChildren() do
+        if v:IsA("Model") and v.Name ~= targetName and swordInstances.Swords[v.Name] then
+            v:Destroy()
+        end
+    end
+
+    -- Kalau sword custom belum ada di character → clone dari ReplicatedInstances
+    if not char:FindFirstChild(targetName) then
+        local template = swordInstancesInstance:FindFirstChild(targetName)
+        if template then
+            local clone = template:Clone()
+            clone.Name = targetName
+            clone.Parent = char
+        end
+    end
+
+    -- Ganti animasi lewat controller (semua orang bisa lihat)
+    if swordsController and swordsController.SetSword then
+        pcall(function()
+            swordsController:SetSword(getgenv().swordAnimations)
+        end)
+    end
+
+    -- Biar server ga ngereset (opsional tapi sangat disarankan)
+    pcall(function()
+        plr:SetAttribute("CurrentlyEquippedSword", targetName)
+    end)
 end
 
+-- Update slash FX saat parry/clash
 local playParryFunc
-local parrySuccessAllConnection
-
-while task.wait() and not parrySuccessAllConnection do
-    for i,v in getconnections(rs.Remotes.ParrySuccessAll.OnClientEvent) do
-        if v.Function and getinfo(v.Function).name == "parrySuccessAll" then
-            parrySuccessAllConnection = v
-            playParryFunc = v.Function
-            v:Disable()
-        end
+local parryConn = rs.Remotes.ParrySuccessAll.OnClientEvent:Connect(function(...) end) -- dummy biar bisa ambil connection
+for _, v in getconnections(rs.Remotes.ParrySuccessAll.OnClientEvent) do
+    if v.Function and getinfo(v.Function).name == "parrySuccessAll" then
+        playParryFunc = v.Function
+        v:Disable()
+        break
     end
 end
-
-local parrySuccessClientConnection
-while task.wait() and not parrySuccessClientConnection do
-    for i,v in getconnections(rs.Remotes.ParrySuccessClient.Event) do
-        if v.Function and getinfo(v.Function).name == "parrySuccessAll" then
-            parrySuccessClientConnection = v
-            v:Disable()
-        end
-    end
-end
-
-getgenv().slashName = getSlashName(getgenv().swordFX)
-
-local lastOtherParryTimestamp = 0
-local clashConnections = {}
 
 rs.Remotes.ParrySuccessAll.OnClientEvent:Connect(function(...)
     setthreadidentity(2)
     local args = {...}
-    if tostring(args[4]) ~= plr.Name then
-        lastOtherParryTimestamp = tick()
-    elseif getgenv().skinChanger then
+    
+    if typeof(args[4]) == "Instance" and args[4].Name == plr.Name and getgenv().skinChanger then
         args[1] = getgenv().slashName
         args[3] = getgenv().swordFX
     end
-    return playParryFunc(unpack(args))
+    
+    if playParryFunc then
+        playParryFunc(unpack(args))
+    end
 end)
 
-table.insert(clashConnections, getconnections(rs.Remotes.ParrySuccessAll.OnClientEvent)[1])
-
+-- Update slash name tiap ganti sword
 getgenv().updateSword = function()
-    getgenv().slashName = getSlashName(getgenv().swordFX)
+    if getgenv().swordFX ~= "" then
+        getgenv().slashName = getSlashName(getgenv().swordFX)
+    end
     setSword()
 end
 
+-- Loop biar sword ga ilang pas respawn / ganti sword
 task.spawn(function()
     while task.wait(1) do
-        if getgenv().skinChanger then
-            local char = plr.Character or plr.CharacterAdded:Wait()
-            if plr:GetAttribute("CurrentlyEquippedSword") ~= getgenv().swordModel then
-                setSword()
-            end
-            if char and (not char:FindFirstChild(getgenv().swordModel)) then
-                setSword()
-            end
-            for _,v in (char and char:GetChildren()) or {} do
-                if v:IsA("Model") and v.Name ~= getgenv().swordModel then
-                    v:Destroy()
-                end
-                task.wait()
-            end
+        if getgenv().skinChanger and plr.Character then
+            setSword()
         end
     end
 end)
@@ -4958,34 +4968,40 @@ do
     local SkinChanger = misc:create_module({
         title = 'Skin Changer',
         flag = 'SkinChanger',
-        description = 'Skin Changer',
+        description = 'Change sword skin, animation & FX (visible to everyone)',
         section = 'left',
         callback = function(value: boolean)
             getgenv().skinChanger = value
             if value then
+                task.wait(0.3)
                 getgenv().updateSword()
             end
         end
     })
 
-
     SkinChanger:change_state(false)
 
     SkinChanger:create_paragraph({
-        title = "âš ï¸EVERYONE CAN SEE ANIMATIONS",
-        text = "IF YOU USE SKIN CHANGER BACKSWORD YOU MUST EQUIP AN ACTUAL BACKSWORD"
+        title = "Everyone Can See Animations & FX",
+        text = "If you use backsword skin → you MUST equip an actual backsword in-game first!\nExample: Want 'Galaxy Sword' backsword? Equip any backsword then type 'Galaxy Sword'"
     })
 
-    local skinchangertextbox = SkinChanger:create_textbox({
-        title = "ï¿¬ Skin Name (Case Sensitive) ï¿¬",
-        placeholder = "Enter Sword Skin Name... ",
-        flag = "SkinChangerTextbox",
-        callback = function(text)
-            getgenv().swordModel = text
-            getgenv().swordAnimations = text
-            getgenv().swordFX = text
+    getgenv().swordFX = clean
+            if getgenv().skinChanger and clean ~= "" then
+                task.wait(0.1)
+                getgenv().updateSword()
+            end
+        end
+    })
+
+    SkinChanger:create_button({
+        title = "Force Refresh Sword",
+        callback = function()
             if getgenv().skinChanger then
                 getgenv().updateSword()
+                misc:notify("Skin Changer", "Sword refreshed!")
+            else
+                misc:notify("Skin Changer", "Enable Skin Changer first!")
             end
         end
     })
@@ -6138,3 +6154,4 @@ end)
 
 
 main:load()  
+
