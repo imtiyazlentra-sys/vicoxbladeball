@@ -1546,7 +1546,7 @@ ConnectionsManager['Auto Parry'] = RunService.Heartbeat:Connect(function()
             end
 
             if getgenv().AutoParryKeypress then
-                VirtualInputService:SendKeyEvent(true, Enum.KeyCode.F, false, nil)
+                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
             else
                 Auto_Parry.Parry(Selected_Parry_Type)
             end
@@ -2348,7 +2348,6 @@ do
         section = 'left',
         callback = function(value: boolean)
             Configs.auto_parry = value  
-
             if getgenv().AutoParryNotify then
                 Library.SendNotification({
                     title = "Module Notification",
@@ -6135,3 +6134,4 @@ end)
 
 
 main:load()  
+
