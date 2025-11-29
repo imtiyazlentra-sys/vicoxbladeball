@@ -62,6 +62,9 @@ local Camera = Workspace.CurrentCamera
 local visualizerEnabled = false
 local cameraLocked = false
 local cameraConnection = nil
+local ParryRemotes = {}
+local OriginalMetas = {}
+local Remotes = {}
 
 getgenv().AnimationsEnabled = false
 getgenv().BallDirectionIndicator = true
@@ -6130,6 +6133,7 @@ workspace.Balls.ChildRemoved:Connect(function(Value)
         ConnectionsManager['Target Change'] = nil
     end
 end)
+
 
 
 
