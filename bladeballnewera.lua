@@ -1435,7 +1435,7 @@ return Spam_Accuracy
 end
 
 
-ConnectionsManager['Auto Parry'] = RunService.PreSimulation:Connect(function()
+ConnectionsManager['Auto Parry'] = RunService.Heartbeat:Connect(function()
 
 
     local debug = getgenv()._original_print or print
@@ -1479,7 +1479,7 @@ ConnectionsManager['Auto Parry'] = RunService.PreSimulation:Connect(function()
         local Ball_Target = Ball:GetAttribute('target')
         local One_Target = One_Ball and One_Ball:GetAttribute('target') or nil
         local Ping = Player.Entity.properties.ping
-        local Ping_Threshold = math.clamp(Ping / 10, 10, 18)
+        local Ping_Threshold = math.clamp(Ping / 10, 12, 28)
 
         local Velocity = Ball.AssemblyLinearVelocity
         local Speed = Velocity.Magnitude
@@ -6192,6 +6192,7 @@ end)
 
 
 main:load()  
+
 
 
 
