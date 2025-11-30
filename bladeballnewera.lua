@@ -1343,7 +1343,7 @@ Auto_Parry.GetEntityProps = function()
     return {Velocity = vel, Direction = dir, Distance = dist, Position = closest.PrimaryPart.Position}
 end
 Auto_Parry.GetBallProps = function()
-    local ball = AutoParry.GetBall()
+    local ball = Auto_Parry.Get_Ball()
     if not ball then return false end
     local zoomies = ball:FindFirstChild('zoomies')
     if not zoomies then return false end
@@ -6090,6 +6090,7 @@ end)
 
 
 main:load()  
+
 
 
 
