@@ -1117,11 +1117,11 @@ function Auto_Parry.Parry(Parry_Type)
     end
    
     for i = 1, presses do
-        if not next(revertedRemotes) then
+        if not next(ParryRemotes) then
             warn("[Parry] Remote belum tertangkap!")
             return
         end
-        for remote, originalArgs in pairs(revertedRemotes) do
+         for remote, originalArgs in pairs(ParryRemotes) do
                     local modifiedArgs = {
                         originalArgs[1],
                         originalArgs[2],
@@ -6095,4 +6095,5 @@ end)
 
 
 main:load()  
+
 
