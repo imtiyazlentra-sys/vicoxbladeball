@@ -23,6 +23,9 @@ if not game:IsLoaded() then
     game.Loaded:Wait()
 end
 
+print("yo user!, thanks for using my script. this script is beta i guess. my friend want to try this script for her own.")
+print("LETS GO")
+
 local Notification = loadstring(game:HttpGet("https://raw.githubusercontent.com/RudertTiktok/VICLIB/refs/heads/main/VICNOTIFY", true))()
 
 local success, result = pcall(function()
@@ -6098,6 +6101,7 @@ end)
 
 
 main:load()  
+
 
 
 
