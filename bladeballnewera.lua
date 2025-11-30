@@ -1333,80 +1333,77 @@ ReplicatedStorage.Remotes.TimeHoleHoldBall.OnClientEvent:Connect(function(e, f)
 end)
 
 
-function Auto_Parry.Spam_Service(self)
-    local Ball = Auto_Parry.Get_Ball()
+Auto_Parry.Spam_Service = function(self)
+    if not Configs.auto_spam then return 0 end
 
-    local Entity = Auto_Parry.Closest_Player()
+    local ball = Auto_Parry.Get_Ball()
+    if not ball or not ball:FindFirstChild("zoomies") then return 0 end
 
-    if not Ball then
-        return false
+    local closest = Auto_Parry.Closest_Player()
+    if not closest or not closest.PrimaryPart then return 0 end
+
+    local zoomies = ball.zoomies
+    local velocity = zoomies.VectorVelocity
+    local speed = velocity.Magnitude
+
+
+    local ping = game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue()
+    local predTime = ping / 2000
+    local ballFuture = ball.Position + velocity * predTime
+    local playerFuture = LocalPlayer.Character.PrimaryPart.Position + LocalPlayer.Character.PrimaryPart.Velocity * predTime
+    local futureDist = (playerFuture - ballFuture).Magnitude
+
+
+    local futureDir = (playerFuture - ballFuture).Unit
+    local futureDot = futureDir:Dot(velocity.Unit)
+
+
+    local entityProps = Auto_Parry.Get_Entity_Props()
+    local ballProps = Auto_Parry.Get_Ball_Props()
+    if not entityProps or not ballProps then return 0 end
+
+    local targetDistance = (LocalPlayer.Character.PrimaryPart.Position - closest.PrimaryPart.Position).Magnitude
+
+
+    local pingAdj = ping / 10
+    if getgenv().HighPingCompensation and ping > 150 then
+        pingAdj = pingAdj * 1.5
     end
 
-    if not Entity or not Entity.PrimaryPart then
-        return false
+ 
+    local keypressComp = (getgenv().AutoSpamKeypress and 18) or 0
+
+  
+    local maxSpamDist = pingAdj + math.min(speed / 3.8, 220) + keypressComp
+
+
+    local moveDir = LocalPlayer.Character.Humanoid.MoveDirection
+    local toEnemyDir = (closest.PrimaryPart.Position - LocalPlayer.Character.PrimaryPart.Position).Unit
+    local enemyMoveDir = closest.Humanoid.MoveDirection
+
+    local movementBoost = 1
+    if moveDir.Magnitude > 0.3 and moveDir:Dot(toEnemyDir) < -0.5 then
+        movementBoost = 12
+    end
+    if enemyMoveDir.Magnitude > 0.3 and enemyMoveDir:Dot(-toEnemyDir) < -0.5 then
+        movementBoost = math.max(movementBoost, 10)
     end
 
+    maxSpamDist = maxSpamDist + math.min(speed / (movementBoost * 1.1), 90)
 
-    local Spam_Accuracy = 0
 
-    local Velocity = Ball.AssemblyLinearVelocity
-local Speed = Velocity.Magnitude
+    if entityProps.Distance > maxSpamDist then return 0 end
+    if ballProps.Distance > maxSpamDist then return 0 end
+    if targetDistance > maxSpamDist then return 0 end
+    if futureDist > maxSpamDist then return 0 end
 
-local Direction = (LocalPlayer.Character.PrimaryPart.Position - Ball.Position).Unit
-local Dot = Direction:Dot(Velocity.Unit)
+    
+    local dotImpact = math.clamp(-futureDot, 0, 1) * math.min(speed / 38, 6)
 
-local Target_Position = Entity.PrimaryPart.Position
-local Target_Distance = LocalPlayer:DistanceFromCharacter(Target_Position)
+    
+    local spamAccuracy = maxSpamDist - dotImpact
 
-local Movement_Factor = 1
-local MoveDir = LocalPlayer.Character.Humanoid.MoveDirection
-local TargetDir = (Target_Position - LocalPlayer.Character.PrimaryPart.Position).Unit
-local TargetMoveDir = Entity.Humanoid.MoveDirection
-
-_G.Last_Close_Contact = _G.Last_Close_Contact or 0
-_G.In_Close_Contact = _G.In_Close_Contact or false
-
-local now = tick()
-
-if Target_Distance <= 3 then
-    _G.In_Close_Contact = true
-end
-
-if _G.In_Close_Contact and Target_Distance > 3.3 then
-    _G.In_Close_Contact = false
-    _G.Last_Close_Contact = now
-end
-
-local can_use_div10 = (not _G.In_Close_Contact) and ((now - _G.Last_Close_Contact) >= 1.5)
-
-if can_use_div10 and MoveDir.Magnitude > 0.2 and MoveDir:Dot(TargetDir) < -0.4 then
-    Movement_Factor = 10
-end
-
-if can_use_div10 and TargetMoveDir.Magnitude > 0.2 and TargetMoveDir:Dot(-TargetDir) < -0.4 then
-    Movement_Factor = 10
-end
-
-local Maximum_Spam_Distance = self.Ping * 0.7 + math.min(Speed / (Movement_Factor * 1.2), 80)
-
-if self.Entity_Properties.Distance > Maximum_Spam_Distance then
-    return Spam_Accuracy
-end
-
-if self.Ball_Properties.Distance > Maximum_Spam_Distance then
-    return Spam_Accuracy
-end
-
-if Target_Distance > Maximum_Spam_Distance then
-    return Spam_Accuracy
-end
-
-local Dot_Reduction = math.clamp(-Dot, 0, 1) 
-local Dot_Impact = math.clamp(Dot_Reduction * (Speed / 40), 0, 4)
-
-Spam_Accuracy = Maximum_Spam_Distance - Dot_Impact
-
-return Spam_Accuracy
+    return spamAccuracy
 end
 
 
@@ -6101,6 +6098,7 @@ end)
 
 
 main:load()  
+
 
 
 
