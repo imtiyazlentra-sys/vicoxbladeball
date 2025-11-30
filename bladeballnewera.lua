@@ -26,6 +26,8 @@ end
 print("yo user!, thanks for using my script. this script is beta i guess. my friend want to try this script for her own.")
 print("...")
 print("i want to say smth. sorry if the script is so bad ass, yo know im not good at this. just have fun with this")
+print("...")
+print("Reizo nonchalant + Sigma + Skibidi + Mogger")
 print("LETS GO")
 
 local Notification = loadstring(game:HttpGet("https://raw.githubusercontent.com/RudertTiktok/VICLIB/refs/heads/main/VICNOTIFY", true))()
@@ -686,7 +688,6 @@ getgenv().swordAnimations = ""
 getgenv().swordFX = ""
 
 
-local print = function() end
 
 if getgenv().updateSword and getgenv().skinChanger then
     getgenv().updateSword()
@@ -6184,6 +6185,7 @@ end)
 
 
 main:load()  
+
 
 
 
