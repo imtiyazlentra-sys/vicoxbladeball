@@ -1435,7 +1435,7 @@ return Spam_Accuracy
 end
 
 
-ConnectionsManager['Auto Parry'] = RunService.Heartbeat:Connect(function()
+ConnectionsManager['Auto Parry'] = RunService.PreSimulation:Connect(function()
 
 
     local debug = getgenv()._original_print or print
@@ -1602,7 +1602,7 @@ ConnectionsManager['Auto Parry'] = RunService.Heartbeat:Connect(function()
                 VirtualInputService:SendKeyEvent(true, Enum.KeyCode.F, false, nil)
             else
                 Auto_Parry.Parry(Selected_Parry_Type)
- 
+                print("parrys")                
             end
 
             Last_Parry = Parry_Time
@@ -6192,6 +6192,7 @@ end)
 
 
 main:load()  
+
 
 
 
