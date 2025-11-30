@@ -1566,6 +1566,13 @@ local Speed = Velocity.Magnitude
             return
         end
 
+			print("Auto Parry running...")
+print("Ball found:", Auto_Parry.Get_Ball() ~= nil)
+print("Target is me:", Ball:GetAttribute('target') == LocalPlayer.Name)
+print("Distance:", ball_properties.distance)
+print("Parry range:", ball_properties.parry_range)
+print("ParryRemotes count:", table.count(ParryRemotes))
+
         if Ball_Target == tostring(LocalPlayer) and ball_properties.distance < ball_properties.parry_range then
             if getgenv().AutoAbility and AutoAbility() then
                 return
@@ -6174,6 +6181,7 @@ end)
 
 
 main:load()  
+
 
 
 
