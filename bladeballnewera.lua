@@ -1313,54 +1313,6 @@ function Auto_Parry:Get_Ball_Properties()
     }
 end
 
-Auto_Parry.Lerp = function(a, b, t)
-    return a + (b - a) * t
-end
-Auto_Parry.ClosestPlayer = function()
-    local maxDist = math.huge
-    local closest = nil
-    for _, entity in pairs(Alive:GetChildren()) do
-        if tostring(entity) ~= tostring(LocalPlayer) then
-            local dist = LocalPlayer:DistanceFromCharacter(entity.PrimaryPart.Position)
-            if dist < maxDist then
-                maxDist = dist
-                closest = entity
-            end
-        end
-    end
-    return closest
-end
-local function GetNumNearby()
-    local count = 0
-    for _, p in pairs(Alive:GetChildren()) do
-        if p.Name ~= LocalPlayer.Name and (p.PrimaryPart.Position - LocalPlayer.Character.PrimaryPart.Position).Magnitude < 50 then
-            count = count + 1
-        end
-    end
-    return count
-end
-Auto_Parry.GetEntityProps = function()
-    local closest = Auto_Parry.ClosestPlayer()
-    if not closest then return false end
-    local vel = closest.PrimaryPart.Velocity
-    local dir = (LocalPlayer.Character.PrimaryPart.Position - closest.PrimaryPart.Position).Unit
-    local dist = (LocalPlayer.Character.PrimaryPart.Position - closest.PrimaryPart.Position).Magnitude
-    return {Velocity = vel, Direction = dir, Distance = dist, Position = closest.PrimaryPart.Position}
-end
-Auto_Parry.GetBallProps = function()
-    local ball = Auto_Parry.Get_Ball()
-    if not ball then return false end
-    local zoomies = ball:FindFirstChild('zoomies')
-    if not zoomies then return false end
-    local vel = zoomies.VectorVelocity
-    local dir = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Unit
-    local dist = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Magnitude
-    local dot = dir:Dot(vel.Unit)
-    local speed = vel.Magnitude
-    return {Speed = speed, Velocity = vel, Direction = dir, Distance = dist, Dot = dot}
-end
-
-
 local Connections_Manager = {}
 local Selected_Parry_Type = nil
 
@@ -1467,7 +1419,7 @@ ConnectionsManager['Auto Parry'] = RunService.Heartbeat:Connect(function()
         local parry_accuracity = (Ping_Threshold + ball_properties.speed) * 1.55 / 11.4 + Ping_Threshold
         local effectiveMultiplier = 1
         if getgenv().RandomParryAccuracyEnabled then
-            if Speed < 200 then
+            if  ball_properties.speed < 200 then
                 effectiveMultiplier = 0.8 + (math.random(40, 100) - 1) * (0.35 / 99)
             else
                 effectiveMultiplier = 0.7 + (math.random(1, 100) - 1) * (0.35 / 99)
@@ -6139,6 +6091,7 @@ end)
 
 
 main:load()  
+
 
 
 
