@@ -23,7 +23,7 @@ if not game:IsLoaded() then
     game.Loaded:Wait()
 end
 
-print("yo user!, thanks for using my script. this script is beta i guess. my friend want to try this script for her own."
+print("yo user!, thanks for using my script. this script is beta i guess. my friend want to try this script for her own.")
 print("...")
 print("i want to say smth. sorry if the script is so bad ass, yo know im not good at this. just have fun with this")
 print("LETS GO")
@@ -1415,10 +1415,8 @@ Auto_Parry.Spam_Service = function()
     local compensation = 0 + math.pi
 	
     local Maximum_Spam_Distance = PingAdjustment + math.min(speed / 4, 200) + compensation
-    local entityProps = Auto_Parry.GetEntityProps()
-    local ballProps = Auto_Parry.GetBallProps()
-    if not entityProps or not ballProps then return 0 end
-    if entityProps.Distance > Maximum_Spam_Distance or ballProps.Distance > Maximum_Spam_Distance or LocalPlayer:DistanceFromCharacter(closest.PrimaryPart.Position) > Maximum_Spam_Distance then return 0 end
+    if not self.entityProps or not self.ballProps then return 0 end
+    if entityProps.Distance > Maximum_Spam_Distance or self.ballProps.Distance > Maximum_Spam_Distance or LocalPlayer:DistanceFromCharacter(closest.PrimaryPart.Position) > Maximum_Spam_Distance then return 0 end
     local Maximum_Speed = 5 - math.min(speed / 5, 5)
     local Maximum_Dot = math.clamp(dot, -1, 0) * Maximum_Speed
     local Spam_Accuracy = Maximum_Spam_Distance - Maximum_Dot
@@ -2573,7 +2571,10 @@ local SpamParry = rage:create_module({
                 local entityProps = Auto_Parry.GetEntityProps()
 
                 
-                local Spam_Accuracy = Auto_Parry.Spam_Service()
+                local Spam_Accuracy = Auto_Parry.Spam_Service({
+                    ballProps =  ballProps,
+                    entityProps = entityProps
+                })
 
                 if Spam_Accuracy <= 0 then
                     return
@@ -6088,7 +6089,4 @@ workspace.Balls.ChildRemoved:Connect(function(Value)
 end)
 
 
-
-
 main:load()  
-
