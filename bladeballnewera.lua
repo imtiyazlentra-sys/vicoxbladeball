@@ -1335,7 +1335,7 @@ local function GetNumNearby()
     return count
 end
 Auto_Parry.GetEntityProps = function()
-    local closest = AutoParry.ClosestPlayer()
+    local closest = Auto_Parry.ClosestPlayer()
     if not closest then return false end
     local vel = closest.PrimaryPart.Velocity
     local dir = (LocalPlayer.Character.PrimaryPart.Position - closest.PrimaryPart.Position).Unit
@@ -6090,6 +6090,7 @@ end)
 
 
 main:load()  
+
 
 
 
