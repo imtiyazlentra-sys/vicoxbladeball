@@ -1467,12 +1467,14 @@ ConnectionsManager['Auto Parry'] = RunService.Heartbeat:Connect(function()
         local Ping = Player.Entity.properties.ping
         local Ping_Threshold = math.clamp(Ping / 10, 10, 18)
         local player_properties = Player.Entity.properties        
+		local Velocity = Ball.AssemblyLinearVelocity
+local Speed = Velocity.Magnitude
         
 
-        local parry_accuracity = (Ping_Threshold + ball_properties.speed) * 1.55 / 11.4 + Ping_Threshold
+        local parry_accuracity = (Ping_Threshold + Speed) * 1.55 / 11.4 + Ping_Threshold
         local effectiveMultiplier = 1
         if getgenv().RandomParryAccuracyEnabled then
-            if  ball_properties.speed < 200 then
+            if  Speed < 200 then
                 effectiveMultiplier = 0.8 + (math.random(40, 100) - 1) * (0.35 / 99)
             else
                 effectiveMultiplier = 0.7 + (math.random(1, 100) - 1) * (0.35 / 99)
@@ -1492,8 +1494,8 @@ ConnectionsManager['Auto Parry'] = RunService.Heartbeat:Connect(function()
             parry_accuracity = parry_accuracity * (1 + (Player.Entity.properties.ping / 500))
         end        
         
-        ball_properties.parry_range = (Ping_Threshold + ball_properties.speed) * 2.5 / 3 + Ping_Threshold
-        ball_properties.spam_range = (Ping_Threshold + ball_properties.speed) * 1.26 / 3.14     
+        ball_properties.parry_range = (Ping_Threshold + Speed) * 2.5 / 3 + Ping_Threshold
+        ball_properties.spam_range = (Ping_Threshold + Speed) * 1.26 / 3.14     
 
         if Player.Entity.properties.sword == 'Titan Blade' then
             ball_properties.parry_range = ball_properties.parry_range + 11
@@ -1585,6 +1587,7 @@ ConnectionsManager['Auto Parry'] = RunService.Heartbeat:Connect(function()
                 VirtualInputService:SendKeyEvent(true, Enum.KeyCode.F, false, nil)
             else
                 Auto_Parry.Parry(Selected_Parry_Type)
+			    print("PARRY!")
             end
 
             Last_Parry = Parry_Time
@@ -6171,6 +6174,7 @@ end)
 
 
 main:load()  
+
 
 
 
