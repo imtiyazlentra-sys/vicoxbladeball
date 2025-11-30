@@ -102,6 +102,8 @@ local PlayerBillboard = nil
 local lastUpdateTime = 0
 
 local ballBillboardEnabled = false
+getgenv().FirstParryDone = false
+local FirstParryDone = getgenv().FirstParryDone
 local playerBillboardEnabled = false
 
 local Last_Spam = Last_Spam or 0
@@ -1107,11 +1109,13 @@ function Auto_Parry.Parry(Parry_Type)
 
     local presses = getgenv().speeddo and isSpam or 1
 
-    if activeMethod == "F Key" then
-        for i = 1, presses do
-            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
-        end
+    if not FirstParryDone then
+        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+        task.wait(0.015)
+        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+        getgenv().FirstParryDone = true
+        FirstParryDone = true
+        Notification.new("success", "Parry", "Parry Pressed!", true, 2)   
     else
         local Parry_Data = Auto_Parry.Parry_Data(Parry_Type)
         for remote, originalArgs in pairs(ParryRemotes) do
@@ -6091,6 +6095,7 @@ end)
 
 
 main:load()  
+
 
 
 
