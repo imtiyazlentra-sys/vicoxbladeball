@@ -100,6 +100,8 @@ local lastUpdateTime = 0
 local ballBillboardEnabled = false
 local playerBillboardEnabled = false
 
+local Last_Spam = Last_Spam or 0
+
 local Auto_Parry = {}
 
 local Configs = {       
@@ -2526,7 +2528,7 @@ do
     local SpamParry = rage:create_module({
         title = 'Auto Spam Parry',
         flag = 'Auto_Spam_Parry',
-        description = 'Automatically spam parries ball (FASTEST 2025)',
+        description = 'Automatically spam parries ball (NO ERROR 2025)',
         section = 'right',
         callback = function(value: boolean)
             Configs.auto_spam_parry = value
@@ -2542,43 +2544,54 @@ do
             if value then
                 ConnectionsManager['Auto Spam'] = RunService.Heartbeat:Connect(function()
                     if not Configs.auto_spam_parry then return end
-                    if Parries >= (ParryThreshold or 2.5) then return end -- anti spam berlebihan
+                    if Parries >= (ParryThreshold or 2.5) then return end
                     if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
                     if LocalPlayer.Character:GetAttribute("Pulsed") then return end
 
                     local ball = Auto_Parry.Get_Ball()
                     if not ball or not ball:FindFirstChild("zoomies") then return end
-                    if not ball:GetAttribute("target") then return end
-                    if ball:GetAttribute("target") ~= tostring(LocalPlayer) then return end
+                    if not ball:GetAttribute("target") or ball:GetAttribute("target") ~= tostring(LocalPlayer) then return end
 
+                    -- PENYE BAB ERROR DI SINI — DIAMANKAN 3 LAPIS
                     local closest = Auto_Parry.Closest_Player()
-                    if not closest or not closest.Character or not closest.Character:FindFirstChild("HumanoidRootPart") then return end
+                    if not closest then return end
+                    if not closest:FindFirstChild("HumanoidRootPart") then return end
+                    -- Kalau masih Model lama, langsung ambil HumanoidRootPart dari workspace.Alive
+                    local enemyRoot = closest:FindFirstChild("HumanoidRootPart")
+                    if not enemyRoot then
+                        -- Cadangan: cari ulang di workspace.Alive
+                        for _, v in pairs(workspace.Alive:GetChildren()) do
+                            if v ~= LocalPlayer.Character and v:FindFirstChild("HumanoidRootPart") then
+                                enemyRoot = v.HumanoidRootPart
+                                break
+                            end
+                        end
+                    end
+                    if not enemyRoot then return end
 
-                    local spamAccuracy = Auto_Parry.Spam_Service()
+                    local spamAccuracy = Auto_Parry.Spam_Service() or 0
                     if spamAccuracy <= 0 then return end
 
-                    local root = LocalPlayer.Character.HumanoidRootPart
-                    local distanceToBall = (root.Position - ball.Position).Magnitude
-                    local distanceToEnemy = (root.Position - closest.Character.HumanoidRootPart.Position).Magnitude
+                    local myRoot = LocalPlayer.Character.HumanoidRootPart
+                    local distanceToBall = (myRoot.Position - ball.Position).Magnitude
+                    local distanceToEnemy = (myRoot.Position - enemyRoot.Position).Magnitude
 
-                    -- Spam condition (INI YANG BIKIN CEPET GILA)
-                    if distanceToBall <= spamAccuracy + 8 and distanceToEnemy <= spamAccuracy + 15 then
-                        -- Anti double spam
-                        if tick() - (Last_Spam or 0) < 0.06 then return end
+                    if distanceToBall <= spamAccuracy + 8 and distanceToEnemy <= spamAccuracy + 18 then
+                        if tick() - (Last_Spam or 0) < 0.065 then return end
                         Last_Spam = tick()
 
                         if getgenv().SpamParryKeypress then
-                            -- Keypress (paling blatant + cepet)
                             VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
                             task.wait()
                             VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
                         else
-                            -- Remote (lebih legit)
                             Auto_Parry.Parry(Selected_Parry_Type or "Camera")
                         end
 
                         Parries += 1
-                        task.delay(0.4, function() if Parries > 0 then Parries = Parries - 1 end end)
+                        task.delay(0.38, function() 
+                            if Parries > 0 then Parries -= 1 end 
+                        end)
                     end
                 end)
             else
@@ -6086,6 +6099,7 @@ end)
 
 
 main:load()  
+
 
 
 
