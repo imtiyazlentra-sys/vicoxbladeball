@@ -82,7 +82,6 @@ getgenv().InfinityDetection = true
 getgenv().DeathSlashDetection = true
 getgenv().TimeHoleDetection = true
 getgenv().HighPingCompensation = true
-AutoParry.Velocity_History = AutoParry.Velocity_History or {}
 local Tornado_Time = Tornado_Time or 0
 local BallTrail = nil
 local PlayerTrail = nil
@@ -402,6 +401,8 @@ function AutoParry.GetBallProps()
     local speed = vel.Magnitude
     return {Speed = speed, Velocity = vel, Direction = dir, Distance = dist, Dot = dot}
 end
+
+AutoParry.Velocity_History = AutoParry.Velocity_History or {}
 
 
 AutoParry.ball.training_ball_entity = Auto_Parry.Lobby_Balls()
@@ -6097,5 +6098,6 @@ end)
 
 
 main:load()  
+
 
 
