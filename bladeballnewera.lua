@@ -85,6 +85,8 @@ getgenv().InfinityDetection = true
 getgenv().DeathSlashDetection = true
 getgenv().TimeHoleDetection = true
 getgenv().HighPingCompensation = true
+getgenv().LastCloseContact = getgenv().LastCloseContact or 0
+getgenv().InCloseRange = getgenv().InCloseRange or false
 local Tornado_Time = Tornado_Time or 0
 local BallTrail = nil
 local PlayerTrail = nil
@@ -1333,79 +1335,80 @@ ReplicatedStorage.Remotes.TimeHoleHoldBall.OnClientEvent:Connect(function(e, f)
 end)
 
 
-Auto_Parry.Spam_Service = function(self)
-    if not Configs.auto_spam then return 0 end
-
+function Auto_Parry.Spam_Service(self)
     local ball = Auto_Parry.Get_Ball()
     if not ball or not ball:FindFirstChild("zoomies") then return 0 end
 
     local closest = Auto_Parry.Closest_Player()
-    if not closest or not closest.PrimaryPart then return 0 end
+    if not closest or not closest.Character or not closest.Character:FindFirstChild("HumanoidRootPart") then return 0 end
 
     local zoomies = ball.zoomies
     local velocity = zoomies.VectorVelocity
     local speed = velocity.Magnitude
+    if speed < 50 then return 0 end 
+
+    local root = LocalPlayer.Character.PrimaryPart
+    local targetRoot = closest.Character.HumanoidRootPart
+
+    local ballToPlayer = (root.Position - ball.Position).Unit
+    local dotToPlayer = ballToPlayer:Dot(velocity.Unit)
 
 
-    local ping = game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue()
-    local predTime = ping / 2000
-    local ballFuture = ball.Position + velocity * predTime
-    local playerFuture = LocalPlayer.Character.PrimaryPart.Position + LocalPlayer.Character.PrimaryPart.Velocity * predTime
-    local futureDist = (playerFuture - ballFuture).Magnitude
+    local ping = Players.LocalPlayer:GetNetworkPing() * 1000
+    local predictionTime = ping / 1800 
+    local futureBallPos = ball.Position + velocity * predictionTime
+    local futureDistance = (root.Position - futureBallPos).Magnitude
 
 
-    local futureDir = (playerFuture - ballFuture).Unit
-    local futureDot = futureDir:Dot(velocity.Unit)
-
-
-    local entityProps = Auto_Parry.Get_Entity_Props()
-    local ballProps = Auto_Parry.Get_Ball_Props()
-    if not entityProps or not ballProps then return 0 end
-
-    local targetDistance = (LocalPlayer.Character.PrimaryPart.Position - closest.PrimaryPart.Position).Magnitude
-
-
-    local pingAdj = ping / 10
-    if getgenv().HighPingCompensation and ping > 150 then
-        pingAdj = pingAdj * 1.5
-    end
-
- 
-    local keypressComp = (getgenv().AutoSpamKeypress and 18) or 0
-
-  
-    local maxSpamDist = pingAdj + math.min(speed / 3.8, 220) + keypressComp
+    local baseDistance = 28 + (ping * 0.055)
+    local speedBonus = math.min(speed / 18, 32)
+    local maxSpamDist = baseDistance + speedBonus
 
 
     local moveDir = LocalPlayer.Character.Humanoid.MoveDirection
-    local toEnemyDir = (closest.PrimaryPart.Position - LocalPlayer.Character.PrimaryPart.Position).Unit
-    local enemyMoveDir = closest.Humanoid.MoveDirection
+    local enemyDir = (targetRoot.Position - root.Position).Unit
+    local enemyMoveDir = closest.Character.Humanoid.MoveDirection
 
-    local movementBoost = 1
-    if moveDir.Magnitude > 0.3 and moveDir:Dot(toEnemyDir) < -0.5 then
-        movementBoost = 12
+    local movementMultiplier = 1
+    local now = tick()
+
+    getgenv().LastCloseContact = getgenv().LastCloseContact or 0
+    getgenv().InCloseRange = getgenv().InCloseRange or false
+
+    local realDistance = (root.Position - targetRoot.Position).Magnitude
+    if realDistance <= 4 then
+        getgenv().InCloseRange = true
+    elseif getgenv().InCloseRange and realDistance > 5 then
+        getgenv().InCloseRange = false
+        getgenv().LastCloseContact = now
     end
-    if enemyMoveDir.Magnitude > 0.3 and enemyMoveDir:Dot(-toEnemyDir) < -0.5 then
-        movementBoost = math.max(movementBoost, 10)
+
+    local canAggressive = (not getgenv().InCloseRange) and (now - getgenv().LastCloseContact > 1.2)
+
+    if canAggressive then
+        if moveDir.Magnitude > 0.3 and moveDir:Dot(enemyDir) < -0.5 then
+            movementMultiplier = 2.8
+        end
+        if enemyMoveDir.Magnitude > 0.3 and enemyMoveDir:Dot(-enemyDir) > 0.5 then
+            movementMultiplier = math.max(movementMultiplier, 2.5)
+        end
     end
 
-    maxSpamDist = maxSpamDist + math.min(speed / (movementBoost * 1.1), 90)
+    maxSpamDist = maxSpamDist * movementMultiplier
 
 
-    if entityProps.Distance > maxSpamDist then return 0 end
-    if ballProps.Distance > maxSpamDist then return 0 end
-    if targetDistance > maxSpamDist then return 0 end
-    if futureDist > maxSpamDist then return 0 end
+    local dotBonus = math.clamp(-dotToPlayer * 12, 0, 18)
 
-    
-    local dotImpact = math.clamp(-futureDot, 0, 1) * math.min(speed / 38, 6)
 
-    
-    local spamAccuracy = maxSpamDist - dotImpact
+    local spamAccuracy = maxSpamDist + dotBonus
 
-    return spamAccuracy
+
+    if futureDistance <= spamAccuracy then
+        return spamAccuracy
+    end
+
+    return 0
 end
-
 
 ConnectionsManager['Auto Parry'] = RunService.PreSimulation:Connect(function()
     if not Configs.auto_parry then return end
@@ -6098,6 +6101,7 @@ end)
 
 
 main:load()  
+
 
 
 
