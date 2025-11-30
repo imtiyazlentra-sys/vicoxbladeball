@@ -232,7 +232,7 @@ end)
 
 local LocalPlayer = Players.LocalPlayer
 
-local SelectedParryMethod = "getgc"
+local SelectedParryMethod = "Hook"
 
 -- Define Config table once
 local Config = {       
@@ -4159,8 +4159,8 @@ ConnectionsManager['disable_quantum_effects'] = RunService.PostSimulation:Connec
 end)
 
 Tabs.Home:Paragraph({
-    Title = "VicoX - BladeBall (V.Exclusive PC)",
-    Desc = "I WANT THIS SCRIPT TO BE GOOD INIT... 😈",
+    Title = "VicoX - BladeBall",
+    Desc = "Not ComeBack Just wondering",
     Image = "https://play-lh.googleusercontent.com/7cIIPlWm4m7AGqVpEsIfyL-HW4cQla4ucXfcQalMft1TMIYQIlf2vqgmthlZgbNAQoaQ",
     ImageSize = 42,
     Thumbnail = "rbxassetid://124408123120792",
@@ -4215,7 +4215,7 @@ Tabs.Home:Button({
             Icon = "bird",
             Buttons = {
                 {
-                    Title = "[Rudert]\n No Paid Version Haha? ",
+                    Title = "[Rudert]\n hello? ",
                     Icon = "bird",
                     Variant = "Tertiary",
                     Callback = function()
@@ -4223,7 +4223,7 @@ Tabs.Home:Button({
                     end,
                 },
                 {
-                    Title = "[E4X]\n bro keeping alive for free..",
+                    Title = "[E4X]\nIm Alone here.",
                     Icon = "bird",
                     Variant = "Tertiary",
                     Callback = function()
@@ -4231,7 +4231,7 @@ Tabs.Home:Button({
                     end,
                 },
                 {
-                    Title = "[Fx]\n wth",
+                    Title = "[Fx]\nNot Respond",
                     Icon = "bird",
                     Variant = "Secondary",
                     Callback = function()
@@ -4239,7 +4239,7 @@ Tabs.Home:Button({
                     end,
                 },
                 {
-                    Title = "[GhX]\n Stfu yall.",
+                    Title = "[GhX]\nNot Respond",
                     Icon = "bird",
                     Variant = "Secondary",
                     Callback = function()
@@ -4247,7 +4247,7 @@ Tabs.Home:Button({
                     end,
                 },
                 {
-                    Title = "[Nurysium]\nif not Nurysium then return end",
+                    Title = "[Nurysium]\Not Respond",
                     Icon = "bird",
                     Variant = "Primary",
                     Callback = function() 
@@ -4523,9 +4523,9 @@ Tabs.Blatant:Dropdown({
 })
 
 Tabs.Blatant:Dropdown({
-    Title = "Parry Method Fire (Reccomend Hook for Intuition Parry or Getgc for Rage/Spam",
+    Title = "Parry Method Fire (Choose Hook, because Getgc Got patched.)",
     Values = { "getgc", "Hook" },
-    Value = "getgc",
+    Value = "Hook",
     Callback = function(option)
         SelectedParryMethod = option
         WindUI:Notify({
