@@ -1405,7 +1405,7 @@ Auto_Parry.Spam_Service = function()
     if not zoomies then return 0 end
     local vel = zoomies.VectorVelocity
     local speed = vel.Magnitude
-    local dot = AutoParry.GetBallProps().Dot
+    local dot = Auto_Parry.GetBallProps().Dot
     local averagePing = GetAveragePing()
     local PingAdjustment = averagePing / 10
     if HighPingCompensation and averagePing > 150 then
@@ -6091,6 +6091,7 @@ end)
 
 
 main:load()  
+
 
 
 
