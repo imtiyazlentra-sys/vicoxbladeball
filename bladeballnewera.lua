@@ -73,6 +73,7 @@ local HighPingCompensation = false
 local Parried = false
 local Last_Parry = 0
 local Parries = 0
+local Alive = Workspace:FindFirstChild("Alive")
 
 getgenv().AnimationsEnabled = false
 getgenv().BallDirectionIndicator = true
@@ -6090,6 +6091,7 @@ end)
 
 
 main:load()  
+
 
 
 
