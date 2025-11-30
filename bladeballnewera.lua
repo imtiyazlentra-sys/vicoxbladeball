@@ -1399,7 +1399,7 @@ end)
 Auto_Parry.Spam_Service = function()
     local ball = Auto_Parry.Get_Ball()
     if not ball then return 0 end
-    local closest = AutoParry.ClosestPlayer()
+    local closest = Auto_Parry.ClosestPlayer()
     if not closest then return 0 end
     local zoomies = ball:FindFirstChild('zoomies')
     if not zoomies then return 0 end
@@ -6091,6 +6091,7 @@ end)
 
 
 main:load()  
+
 
 
 
