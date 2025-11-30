@@ -1450,14 +1450,12 @@ ConnectionsManager['Auto Parry'] = RunService.PreSimulation:Connect(function()
     local Balls = Auto_Parry.Get_Balls()
 
     if #Balls == 0 then
-        debug("[AutoParry] No real balls found!")
         return
     end    
 
     for _, Ball in pairs(Balls) do
 
         if not Ball then
-            debug("[AutoParry] Ball was nil (skipped)")
             return
         end
 
@@ -1465,17 +1463,14 @@ ConnectionsManager['Auto Parry'] = RunService.PreSimulation:Connect(function()
         local Zoomies = Ball:FindFirstChild('zoomies')
 
         if not Zoomies then
-            debug("[AutoParry] Ball has no zoomies — skillshot not active")
             return
         end
 
         Ball:GetAttributeChangedSignal('target'):Once(function()
             Parried = false
-            debug("[AutoParry] Ball target changed — reset parried")
         end)
 
         if Parried then
-            debug("[AutoParry] Skipped — already parried, waiting cooldown.")
             return
         end
 
@@ -1558,7 +1553,6 @@ ConnectionsManager['Auto Parry'] = RunService.PreSimulation:Connect(function()
         end
 
         if One_Target == tostring(LocalPlayer) and Curved then
-            debug("[AutoParry] Curved ball detected — skip parry.")
             return
         end
         
@@ -6198,6 +6192,7 @@ end)
 
 
 main:load()  
+
 
 
 
