@@ -2523,122 +2523,126 @@ do
 end
 
 do
-local SpamParry = rage:create_module({
-    title = 'Auto Spam Parry',
-    flag = 'Auto_Spam_Parry',
-    description = 'Automatically spam parries ball',
-    section = 'right',
-    callback = function(value: boolean)
-        if getgenv().AutoSpamNotify then
-            Library.SendNotification({
-                title = "Module Notification",
-                text = "Auto Spam Parry turned " .. (value and "ON" or "OFF"),
-                duration = 3
-            })
-        end
+    local SpamParry = rage:create_module({
+        title = 'Auto Spam Parry',
+        flag = 'Auto_Spam_Parry',
+        description = 'Spam parry super cepat & anti-detection',
+        section = 'right',
+        callback = function(enabled: boolean)
+            Configs.auto_spam_parry = enabled
 
-        if value then
-            Connections_Manager['Auto Spam'] = RunService.PreSimulation:Connect(function()
-                local Ball = Auto_Parry.Get_Ball()
-                if not Ball then return end
-
-                local Zoomies = Ball:FindFirstChild('zoomies')
-                if not Zoomies then return end
-
-                Auto_Parry.Closest_Player()
-
-                local Ping = Player.Entity.properties.ping
-                local Ping_Threshold = math.clamp(Ping / 10, 10, 18)
-
-                local Ball_Target = Ball:GetAttribute('target')
-                if not Ball_Target then return end
-
-                local Ball_Properties = Auto_Parry:Get_Ball_Properties()
-                local Entity_Properties = Auto_Parry:Get_Entity_Properties()
-
-                
-                local Spam_Accuracy = Auto_Parry.Spam_Service({
-                    Ball_Properties = Ball_Properties,
-                    Entity_Properties = Entity_Properties,
-                    Ping = Ping_Threshold
+            if getgenv().AutoSpamNotify then
+                Library.SendNotification({
+                    title = "Module Notification",
+                    text = "Auto Spam Parry " .. (enabled and "ON" or "OFF"),
+                    duration = 2.5
                 })
+            end
 
-                if Spam_Accuracy <= 0 then
-                    return
-                end
+            if enabled then
+                ConnectionsManager['Auto Spam'] = RunService.PreSimulation:Connect(function()
+                    if not Configs.auto_spam_parry then return end
+                    if Parries >= (ParryThreshold or 2.5) then return end -- anti over-spam
 
-                local Target_Position = Closest_Entity.PrimaryPart.Position
-                local Target_Distance = LocalPlayer:DistanceFromCharacter(Target_Position)
-                local Distance = LocalPlayer:DistanceFromCharacter(Ball.Position)
+                    local character = LocalPlayer.Character
+                    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
 
-                if Target_Distance > Spam_Accuracy or Distance > Spam_Accuracy then
-                    return
-                end
+                    local ball = Auto_Parry.Get_Ball()
+                    if not ball or not ball.Parent == nil then return end
+                    local zoomies = ball:FindFirstChild("zoomies")
+                    if not zoomies then return end
 
-                if LocalPlayer.Character:GetAttribute('Pulsed') then
-                    return
-                end
-                if Ball_Target == tostring(LocalPlayer) and Target_Distance > 25 and Distance > 30 then
-                    return
-                end
+                    local closest = Auto_Parry.Closest_Player()
+                    if not closest or not closest.Character or not closest.Character:FindFirstChild("HumanoidRootPart") then return end
 
-                
-                if Distance <= Spam_Accuracy and Parries > ParryThreshold then
-                    if getgenv().SpamParryKeypress then
-                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.F, false, game)
-                    else
-                        Auto_Parry.Parry(Selected_Parry_Type)
+                    -- Pake fungsi Spam_Service yang baru (yang aku kasih tadi)
+                    local spamAccuracy = Auto_Parry.Spam_Service()
+                    if spamAccuracy <= 0 then return end
+
+                    local root = character.HumanoidRootPart
+                    local ballPos = ball.Position
+                    local distanceToBall = (root.Position - ballPos).Magnitude
+
+                    -- Future distance (biar spam lebih awal)
+                    local ping = Players.LocalPlayer:GetNetworkPing() * 1000
+                    local futurePos = ballPos + zoomies.VectorVelocity * (ping / 1800)
+                    local futureDistance = (root.Position - futurePos).Magnitude
+
+                    -- Final trigger (super responsif)
+                    if futureDistance <= spamAccuracy + 8 then -- +8 biar lebih agresif
+                        task.spawn(function()
+                            -- Anti double-spam
+                            if tick() - (getgenv().LastSpamTime or 0) < 0.07 then return end
+                            getgenv().LastSpamTime = tick()
+
+                            -- Animation biar keliatan natural
+                            if tick() - (Last_Parry or 0) > 0.4 then
+                                Auto_Parry.Parry_Animation()
+                            end
+
+                            -- Method spam
+                            if getgenv().AutoParryKeypress then
+                                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+                                task.wait()
+                                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+                            else
+                                Auto_Parry.Parry(Selected_Parry_Type or "Camera")
+                            end
+
+                            Parries += 1
+                            task.delay(0.5, function() if Parries > 0 then Parries -= 1 end)
+                        end)
                     end
+                end)
+            else
+                if ConnectionsManager['Auto Spam'] then
+                    ConnectionsManager['Auto Spam']:Disconnect()
+                    ConnectionsManager['Auto Spam'] = nil
                 end
-            end)
-        else
-            if Connections_Manager['Auto Spam'] then
-                Connections_Manager['Auto Spam']:Disconnect()
-                Connections_Manager['Auto Spam'] = nil
             end
         end
-    end
-})
+    })
 
-    local dropdown2 = SpamParry:create_dropdown({
-        title = 'Parry Type',
-        flag = 'Spam_Parry_Type',
-
-        options = {
-            'Legit',
-            'Blatant'
-        },
-
-        multi_dropdown = false,
-        maximum_options = 2,
-
-        callback = function(value: string)
+    SpamParry:create_dropdown({
+        title = 'Spam Mode',
+        flag = 'Spam_Mode',
+        options = {'Legit', 'Blatant', 'God'},
+        callback = function(v)
+            if v == "Legit" then
+                ParryThreshold = 2.2
+            elseif v == "Blatant" then
+                ParryThreshold = 1.8
+            else -- God
+                ParryThreshold = 1.3
+            end
         end
     })
 
     SpamParry:create_slider({
-        title = "Parry Threshold",
-        flag = "Parry_Threshold",
-        maximum_value = 3,
-        minimum_value = 1,
-        value = 2.5,
-        round_number = false,
-        callback = function(value: number)
-            ParryThreshold = value
-        end
-    })
-
-       
- 
-    SpamParry:create_slider({
-        title = "Spam Speed",
-        flag = "Spam_Speed",
+        title = "Max Parries Before Stop",
+        flag = "Max_Parries",
         maximum_value = 5,
         minimum_value = 1,
-        value = 2,
+        value = 3,
         round_number = false,
-        callback = function(value: number)
-            getgenv().speeddo = value
+        callback = function(v)
+            ParryThreshold = v
+        end
+    })
+
+    SpamParry:create_checkbox({
+        title = "Keypress Mode",
+        flag = "Spam_Keypress",
+        callback = function(v)
+            getgenv().AutoParryKeypress = v
+        end
+    })
+
+    SpamParry:create_checkbox({
+        title = "Notify",
+        flag = "Spam_Notify",
+        callback = function(v)
+            getgenv().AutoSpamNotify = v
         end
     })
 end
@@ -6101,6 +6105,7 @@ end)
 
 
 main:load()  
+
 
 
 
