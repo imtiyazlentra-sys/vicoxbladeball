@@ -1434,14 +1434,18 @@ return Spam_Accuracy
 end
 
 
-ConnectionsManager['Auto Parry'] = RunService.Heartbeat:Connect(function()
+ConnectionsManager['Auto Parry'] = RunService.PreSimulation:Connect(function()
+    print("Auto Parry loop running...")
     if not Configs.auto_parry then
         return
     end
 
     local One_Ball = Auto_Parry.Get_Ball()
     local Balls = Auto_Parry.Get_Balls()
-
+   print("Ball count:", #Balls)
+   if #Balls == 0 then
+      print("No real balls found!")
+   end
     for _, Ball in pairs(Balls) do
         if not Ball then
             return
@@ -6180,6 +6184,7 @@ end)
 
 
 main:load()  
+
 
 
 
