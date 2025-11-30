@@ -1436,99 +1436,114 @@ end
 
 
 ConnectionsManager['Auto Parry'] = RunService.PreSimulation:Connect(function()
-    print("Auto Parry loop running...")
+
+
+    local debug = getgenv()._original_print or print
+
+    debug("\n[AutoParry] Loop running...")
+
     if not Configs.auto_parry then
+        debug("[AutoParry] Disabled.")
         return
     end
 
     local One_Ball = Auto_Parry.Get_Ball()
     local Balls = Auto_Parry.Get_Balls()
-   print("Ball count:", #Balls)
-   if #Balls == 0 then
-      print("No real balls found!")
-   end
+
+    debug("[AutoParry] Ball count:", #Balls)
+    if #Balls == 0 then
+        debug("[AutoParry] No real balls found!")
+        return
+    end    
+
     for _, Ball in pairs(Balls) do
+
         if not Ball then
+            debug("[AutoParry] Ball was nil (skipped)")
             return
         end
 
-        local ball_properties = AutoParry.ball.properties        
-
+        local ball_properties = AutoParry.ball.properties
         local Zoomies = Ball:FindFirstChild('zoomies')
+
         if not Zoomies then
+            debug("[AutoParry] Ball has no zoomies — skillshot not active")
             return
         end
 
         Ball:GetAttributeChangedSignal('target'):Once(function()
             Parried = false
+            debug("[AutoParry] Ball target changed — reset parried")
         end)
 
         if Parried then
+            debug("[AutoParry] Skipped — already parried, waiting cooldown.")
             return
         end
 
+
+
         local Ball_Target = Ball:GetAttribute('target')
-        local One_Target = One_Ball:GetAttribute('target')     
+        local One_Target = One_Ball and One_Ball:GetAttribute('target') or nil
         local Ping = Player.Entity.properties.ping
         local Ping_Threshold = math.clamp(Ping / 10, 10, 18)
-        local player_properties = Player.Entity.properties        
-		local Velocity = Ball.AssemblyLinearVelocity
-local Speed = Velocity.Magnitude
-        
+
+        local Velocity = Ball.AssemblyLinearVelocity
+        local Speed = Velocity.Magnitude
+        local player_properties = Player.Entity.properties
 
         local parry_accuracity = (Ping_Threshold + Speed) * 1.55 / 11.4 + Ping_Threshold
+
+
         local effectiveMultiplier = 1
         if getgenv().RandomParryAccuracyEnabled then
-            if  Speed < 200 then
-                effectiveMultiplier = 0.8 + (math.random(40, 100) - 1) * (0.35 / 99)
+            if Speed < 200 then
+                effectiveMultiplier = 0.8 + (math.random(40,100)-1)*(0.35/99)
             else
-                effectiveMultiplier = 0.7 + (math.random(1, 100) - 1) * (0.35 / 99)
+                effectiveMultiplier = 0.7 + (math.random(1,100)-1)*(0.35/99)
             end
         end
-        parry_accuracity = parry_accuracity * effectiveMultiplier
+        parry_accuracity *= effectiveMultiplier
 
         if player_properties.is_moving then
-            parry_accuracity = parry_accuracity * 1.1
+            parry_accuracity *= 1.1
         end
-
         if player_properties.is_moving_backwards then
-            parry_accuracity = parry_accuracity * (1 / 1.05)
+            parry_accuracity *= 1/1.05
         end
-
-        if Player.Entity.properties.ping >= 270 then
-            parry_accuracity = parry_accuracity * (1 + (Player.Entity.properties.ping / 500))
+        if Ping >= 270 then
+            parry_accuracity *= (1 + Ping/500)
         end        
-        
-        ball_properties.parry_range = (Ping_Threshold + Speed) * 2.5 / 3 + Ping_Threshold
-        ball_properties.spam_range = (Ping_Threshold + Speed) * 1.26 / 3.14     
 
-        if Player.Entity.properties.sword == 'Titan Blade' then
-            ball_properties.parry_range = ball_properties.parry_range + 11
+        ball_properties.parry_range = (Ping_Threshold + Speed) * 2.5/3 + Ping_Threshold
+        ball_properties.spam_range  = (Ping_Threshold + Speed) * 1.26/3.14
+
+        if player_properties.sword == 'Titan Blade' then
+            ball_properties.parry_range += 11
             ball_properties.spam_range += 2
         end
 
-        AutoParry.target.current_changed = AutoParry.target.current_changed or false
-    AutoParry.target.direction_changed_on_cframe = AutoParry.target.direction_changed_on_cframe or false
 
-    if AutoParry.target.current ~= AutoParry.target.previous then
-        AutoParry.target.current_changed = true
-        AutoParry.target.previous = AutoParry.target.current
-    else
-        AutoParry.target.current_changed = false
-    end
 
-    if AutoParry.target.current then
-        local current_cframe = AutoParry.target.current.PrimaryPart and AutoParry.target.current.PrimaryPart.CFrame or CFrame.new()
-        if not AutoParry.target.last_cframe then
-            AutoParry.target.last_cframe = current_cframe
+        if AutoParry.target.current ~= AutoParry.target.previous then
+            AutoParry.target.current_changed = true
+            AutoParry.target.previous = AutoParry.target.current
+        else
+            AutoParry.target.current_changed = false
         end
-        local current_direction = current_cframe.LookVector
-        local last_direction = AutoParry.target.last_cframe.LookVector
-        AutoParry.target.direction_changed_on_cframe = (current_direction - last_direction).Magnitude > 0.1
-        AutoParry.target.last_cframe = current_cframe
-    else
-        AutoParry.target.direction_changed_on_cframe = false
-    end                          
+
+        if AutoParry.target.current then
+            local cf = AutoParry.target.current.PrimaryPart and AutoParry.target.current.PrimaryPart.CFrame or CFrame.new()
+            if not AutoParry.target.last_cframe then
+                AutoParry.target.last_cframe = cf
+            end
+            AutoParry.target.direction_changed_on_cframe =
+                (cf.LookVector - AutoParry.target.last_cframe.LookVector).Magnitude > 0.1
+            
+            AutoParry.target.last_cframe = cf
+        else
+            AutoParry.target.direction_changed_on_cframe = false
+        end
 
         local Curved = Auto_Parry.Is_Curved()
 
@@ -1538,58 +1553,60 @@ local Speed = Velocity.Magnitude
         end
 
         if Runtime:FindFirstChild('Tornado') then
-            if (tick() - Tornado_Time) < (Runtime.Tornado:GetAttribute("TornadoTime") or 1) + 0.314159 then
+            if (tick() - Tornado_Time) < ((Runtime.Tornado:GetAttribute("TornadoTime") or 1) + 0.314159) then
+                debug("[AutoParry] In tornado — skip this frame.")
                 return
             end
         end
 
-       local distance_to_last_position = LocalPlayer:DistanceFromCharacter(ball_properties.last_position)
-         
-
         if One_Target == tostring(LocalPlayer) and Curved then
+            debug("[AutoParry] Curved ball detected — skip parry.")
             return
         end
-
+        
         if Ball:FindFirstChild("ComboCounter") then
+            debug("[AutoParry] Slashes of fury detected — skip.")
             return
         end
 
-        local Singularity_Cape = LocalPlayer.Character.PrimaryPart:FindFirstChild('SingularityCape')
-        if Singularity_Cape then
+        if LocalPlayer.Character.PrimaryPart:FindFirstChild('SingularityCape') then
+            debug("[AutoParry] Singularity active — skip.")
             return
         end
 
         if getgenv().InfinityDetection and Infinity then
+            debug("[AutoParry] Infinity ball — skip.")
             return
         end
 
         if getgenv().DeathSlashDetection and deathshit then
+            debug("[AutoParry] DeathSlash — skip.")
             return
         end
 
         if getgenv().TimeHoleDetection and timehole then
+            debug("[AutoParry] TimeHole — skip.")
             return
         end
 
-			print("Auto Parry running...")
-print("Ball found:", Auto_Parry.Get_Ball() ~= nil)
-print("Target is me:", Ball:GetAttribute('target') == LocalPlayer.Name)
-print("Distance:", ball_properties.distance)
-print("Parry range:", ball_properties.parry_range)
+        debug("[AutoParry] Running check...")
+        debug("Ball found:", Ball ~= nil)
+        debug("Target is me:", Ball_Target == LocalPlayer.Name)
+        debug("Distance:", ball_properties.distance)
+        debug("Parry range:", ball_properties.parry_range)
+        debug("Accuracity:", parry_accuracity)
 
-        if Ball_Target == tostring(LocalPlayer) and ball_properties.distance < ball_properties.parry_range then
-            if getgenv().AutoAbility and AutoAbility() then
-                return
-            end
-        end
 
-        if Ball_Target == tostring(LocalPlayer) and ball_properties.distance < ball_properties.parry_range and ball_properties.distance < parry_accuracity then
-            if getgenv().CooldownProtection and cooldownProtection() then
-                return
-            end
+
+        if Ball_Target == tostring(LocalPlayer)
+        and ball_properties.distance < ball_properties.parry_range
+        and ball_properties.distance < parry_accuracity
+        then
+            debug("[AutoParry] *** PARRY TRIGGERED ***")
 
             local Parry_Time = os.clock()
-            local Time_View = Parry_Time - (Last_Parry)
+            local Time_View = Parry_Time - Last_Parry
+
             if Time_View > 0.5 then
                 Auto_Parry.Parry_Animation()
             end
@@ -1598,21 +1615,25 @@ print("Parry range:", ball_properties.parry_range)
                 VirtualInputService:SendKeyEvent(true, Enum.KeyCode.F, false, nil)
             else
                 Auto_Parry.Parry(Selected_Parry_Type)
-			    print("PARRY!")
+                debug("[AutoParry] >>> PARRY() CALLED <<<")
             end
 
             Last_Parry = Parry_Time
             Parried = true
         end
 
-        local Last_Parrys = tick()
 
-                             repeat
-                            RunService.PreSimulation:Wait()
-                        until (tick() - Last_Parrys) >= 1 or not Parried
-                        Parried = false
-                    end
-                end)
+
+        local Last_Parrys = tick()
+        repeat
+            RunService.PreSimulation:Wait()
+        until (tick() - Last_Parrys) >= 1 or not Parried
+
+        Parried = false
+        debug("[AutoParry] Reset Parried.")
+
+    end
+end)
 
 local Balls = workspace:WaitForChild('Balls')
 local CurrentBall = nil
@@ -6185,6 +6206,7 @@ end)
 
 
 main:load()  
+
 
 
 
