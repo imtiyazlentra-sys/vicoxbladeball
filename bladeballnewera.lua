@@ -1111,11 +1111,15 @@ function Auto_Parry.Parry(Parry_Type)
 
 	local hasRemotes = false
 
-    if not hasRemotes then
-        mouse1click()
-		Notification.new("success", "Parry", "Parry Pressed!", true, 2)
-    end
-	
+     if not FirstParryDone then
+        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+        task.wait(0.015)
+        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+        getgenv().FirstParryDone = true
+        FirstParryDone = true
+        Notification.new("success", "Parry", "Parry Pressed!", true, 2)
+        return
+	else	
         local Parry_Data = Auto_Parry.Parry_Data(Parry_Type)
         for remote, originalArgs in pairs(ParryRemotes) do
         local modifiedArgs = {originalArgs[1], originalArgs[2], 0, Parry_Data[2], Parry_Data[3], Parry_Data[4]}
@@ -1125,6 +1129,7 @@ function Auto_Parry.Parry(Parry_Type)
             remote:InvokeServer(unpack(modifiedArgs))
                  end
              end   
+	end
 
     if Parries > 7 then
         return false
@@ -1352,34 +1357,82 @@ ReplicatedStorage.Remotes.TimeHoleHoldBall.OnClientEvent:Connect(function(e, f)
 end)
 
 
-Auto_Parry.Spam_Service = function()
-    local ball = Auto_Parry.Get_Ball()
-    if not ball then return 0 end
-    local closest = Auto_Parry.ClosestPlayer()
-    if not closest then return 0 end
-    local zoomies = ball:FindFirstChild('zoomies')
-    if not zoomies then return 0 end
-    local vel = zoomies.VectorVelocity
-    local speed = vel.Magnitude
-    local dot = Auto_Parry.GetBallProps().Dot
-    local averagePing = GetAveragePing()
-    local PingAdjustment = averagePing / 10
-    if HighPingCompensation and averagePing > 150 then
-        PingAdjustment = PingAdjustment * 1.8
+function Auto_Parry.Spam_Service(self)
+    local Ball = Auto_Parry.Get_Ball()
+
+    local Entity = Auto_Parry.Closest_Player()
+
+    if not Ball then
+        return false
     end
-    local compensation = 0 + math.pi
-	
-    local Maximum_Spam_Distance = PingAdjustment + math.min(speed / 4, 200) + compensation
-    local entityProps = Auto_Parry.GetEntityProps()
-    local ballProps = Auto_Parry.GetBallProps()
-    if not entityProps or not ballProps then return 0 end
-    if entityProps.Distance > Maximum_Spam_Distance or ballProps.Distance > Maximum_Spam_Distance or LocalPlayer:DistanceFromCharacter(closest.PrimaryPart.Position) > Maximum_Spam_Distance then return 0 end
-    local Maximum_Speed = 5 - math.min(speed / 5, 5)
-    local Maximum_Dot = math.clamp(dot, -1, 0) * Maximum_Speed
-    local Spam_Accuracy = Maximum_Spam_Distance - Maximum_Dot
-	
+
+    if not Entity or not Entity.PrimaryPart then
+        return false
+    end
+
+
+    local Spam_Accuracy = 0
+
+    local Velocity = Ball.AssemblyLinearVelocity
+local Speed = Velocity.Magnitude
+
+local Direction = (LocalPlayer.Character.PrimaryPart.Position - Ball.Position).Unit
+local Dot = Direction:Dot(Velocity.Unit)
+
+local Target_Position = Entity.PrimaryPart.Position
+local Target_Distance = LocalPlayer:DistanceFromCharacter(Target_Position)
+
+local Movement_Factor = 1
+local MoveDir = LocalPlayer.Character.Humanoid.MoveDirection
+local TargetDir = (Target_Position - LocalPlayer.Character.PrimaryPart.Position).Unit
+local TargetMoveDir = Entity.Humanoid.MoveDirection
+
+_G.Last_Close_Contact = _G.Last_Close_Contact or 0
+_G.In_Close_Contact = _G.In_Close_Contact or false
+
+local now = tick()
+
+if Target_Distance <= 3 then
+    _G.In_Close_Contact = true
+end
+
+if _G.In_Close_Contact and Target_Distance > 3.3 then
+    _G.In_Close_Contact = false
+    _G.Last_Close_Contact = now
+end
+
+local can_use_div10 = (not _G.In_Close_Contact) and ((now - _G.Last_Close_Contact) >= 1.5)
+
+if can_use_div10 and MoveDir.Magnitude > 0.2 and MoveDir:Dot(TargetDir) < -0.4 then
+    Movement_Factor = 10
+end
+
+if can_use_div10 and TargetMoveDir.Magnitude > 0.2 and TargetMoveDir:Dot(-TargetDir) < -0.4 then
+    Movement_Factor = 10
+end
+
+local Maximum_Spam_Distance = self.Ping * 0.7 + math.min(Speed / (Movement_Factor * 1.2), 80)
+
+if self.Entity_Properties.Distance > Maximum_Spam_Distance then
     return Spam_Accuracy
 end
+
+if self.Ball_Properties.Distance > Maximum_Spam_Distance then
+    return Spam_Accuracy
+end
+
+if Target_Distance > Maximum_Spam_Distance then
+    return Spam_Accuracy
+end
+
+local Dot_Reduction = math.clamp(-Dot, 0, 1) 
+local Dot_Impact = math.clamp(Dot_Reduction * (Speed / 40), 0, 4)
+
+Spam_Accuracy = Maximum_Spam_Distance - Dot_Impact
+
+return Spam_Accuracy
+end
+
 
 ConnectionsManager['Auto Parry'] = RunService.Heartbeat:Connect(function()
     if not Configs.auto_parry then
@@ -2569,11 +2622,15 @@ local SpamParry = rage:create_module({
                 local Ball_Target = Ball:GetAttribute('target')
                 if not Ball_Target then return end
 
-                local ballProps = Auto_Parry.GetBallProps()
-                local entityProps = Auto_Parry.GetEntityProps()
+                local Ball_Properties = Auto_Parry:Get_Ball_Properties()
+                local Entity_Properties = Auto_Parry:Get_Entity_Properties()
 
                 
-                local Spam_Accuracy = Auto_Parry.Spam_Service()
+                local Spam_Accuracy = Auto_Parry.Spam_Service({
+                    Ball_Properties = Ball_Properties,
+                    Entity_Properties = Entity_Properties,
+                    Ping = Ping_Threshold
+                })
 
                 if Spam_Accuracy <= 0 then
                     return
@@ -2612,26 +2669,49 @@ local SpamParry = rage:create_module({
     end
 })
 
+    local dropdown2 = SpamParry:create_dropdown({
+        title = 'Parry Type',
+        flag = 'Spam_Parry_Type',
+
+        options = {
+            'Legit',
+            'Blatant'
+        },
+
+        multi_dropdown = false,
+        maximum_options = 2,
+
+        callback = function(value: string)
+        end
+    })
+
     SpamParry:create_slider({
         title = "Parry Threshold",
         flag = "Parry_Threshold",
-        maximum_value = 5,
+        maximum_value = 3,
         minimum_value = 1,
-        value = 3,
+        value = 2.5,
         round_number = false,
-        callback = function(value)
+        callback = function(value: number)
             ParryThreshold = value
         end
     })
 
-    SpamParry:create_checkbox({
-        title = "Notify",
-        flag = "Spam_Notify",
-        callback = function(v)
-            getgenv().AutoSpamNotify = v
+       
+ 
+    SpamParry:create_slider({
+        title = "Spam Speed",
+        flag = "Spam_Speed",
+        maximum_value = 5,
+        minimum_value = 1,
+        value = 2,
+        round_number = false,
+        callback = function(value: number)
+            getgenv().speeddo = value
         end
     })
 end
+
 
     
 do
@@ -6091,6 +6171,7 @@ end)
 
 
 main:load()  
+
 
 
 
