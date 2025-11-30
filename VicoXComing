@@ -4973,40 +4973,6 @@ Tabs.Worlds:Section({ Title = "Advanced Worlds (Deleted Better Perform)" })
 
 Tabs.Worlds:Section({ Title = "World Filters V1", Icon = "cloud" })
 
-if not game.Lighting:FindFirstChild("ColorCorrection") then
-    local cc = Instance.new("ColorCorrectionEffect")
-    cc.Name = "ColorCorrection"
-    cc.Parent = game.Lighting
-    cc.TintColor = Color3.new(1, 1, 1)
-    cc.Saturation = 0
-end
-
-
-Tabs.Worlds:Toggle({
-    Title = "Enable World Filter",
-    Icon = "filter",
-    Value = false,
-    Callback = function(value)
-        getgenv().WorldFilterEnabled = value
-        if not value then
-            if game.Lighting:FindFirstChild("CustomAtmosphere") then
-                game.Lighting.CustomAtmosphere:Destroy()
-            end
-            game.Lighting.FogEnd = 100000
-            if game.Lighting:FindFirstChild("ColorCorrection") then
-                game.Lighting.ColorCorrection.TintColor = Color3.new(1, 1, 1)
-                game.Lighting.ColorCorrection.Saturation = 0
-            end
-        end
-        WindUI:Notify({
-            Title = "World Filter",
-            Content = "World Filter " .. (value and "enabled" or "disabled"),
-            Duration = 0.5,
-            Icon = "filter"
-        })
-    end
-})
-
 
 Tabs.Worlds:Toggle({
     Title = "Enable Atmosphere",
