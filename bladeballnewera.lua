@@ -87,6 +87,7 @@ getgenv().TimeHoleDetection = true
 getgenv().HighPingCompensation = true
 getgenv().LastCloseContact = getgenv().LastCloseContact or 0
 getgenv().InCloseRange = getgenv().InCloseRange or false
+getgenv().LastSpamTime = 0
 local Tornado_Time = Tornado_Time or 0
 local BallTrail = nil
 local PlayerTrail = nil
@@ -6105,6 +6106,7 @@ end)
 
 
 main:load()  
+
 
 
 
