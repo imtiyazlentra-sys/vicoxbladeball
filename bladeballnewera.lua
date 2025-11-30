@@ -1440,8 +1440,7 @@ ConnectionsManager['Auto Parry'] = RunService.PreSimulation:Connect(function()
 
     local debug = getgenv()._original_print or print
 
-    debug("\n[AutoParry] Loop running...")
-
+    
     if not Configs.auto_parry then
         debug("[AutoParry] Disabled.")
         return
@@ -1450,7 +1449,6 @@ ConnectionsManager['Auto Parry'] = RunService.PreSimulation:Connect(function()
     local One_Ball = Auto_Parry.Get_Ball()
     local Balls = Auto_Parry.Get_Balls()
 
-    debug("[AutoParry] Ball count:", #Balls)
     if #Balls == 0 then
         debug("[AutoParry] No real balls found!")
         return
@@ -1589,12 +1587,7 @@ ConnectionsManager['Auto Parry'] = RunService.PreSimulation:Connect(function()
             return
         end
 
-        debug("[AutoParry] Running check...")
-        debug("Ball found:", Ball ~= nil)
-        debug("Target is me:", Ball_Target == LocalPlayer.Name)
-        debug("Distance:", ball_properties.distance)
-        debug("Parry range:", ball_properties.parry_range)
-        debug("Accuracity:", parry_accuracity)
+    
 
 
 
@@ -1602,7 +1595,7 @@ ConnectionsManager['Auto Parry'] = RunService.PreSimulation:Connect(function()
         and ball_properties.distance < ball_properties.parry_range
         and ball_properties.distance < parry_accuracity
         then
-            debug("[AutoParry] *** PARRY TRIGGERED ***")
+ 
 
             local Parry_Time = os.clock()
             local Time_View = Parry_Time - Last_Parry
@@ -1615,7 +1608,7 @@ ConnectionsManager['Auto Parry'] = RunService.PreSimulation:Connect(function()
                 VirtualInputService:SendKeyEvent(true, Enum.KeyCode.F, false, nil)
             else
                 Auto_Parry.Parry(Selected_Parry_Type)
-                debug("[AutoParry] >>> PARRY() CALLED <<<")
+ 
             end
 
             Last_Parry = Parry_Time
@@ -1630,7 +1623,6 @@ ConnectionsManager['Auto Parry'] = RunService.PreSimulation:Connect(function()
         until (tick() - Last_Parrys) >= 1 or not Parried
 
         Parried = false
-        debug("[AutoParry] Reset Parried.")
 
     end
 end)
@@ -6206,6 +6198,7 @@ end)
 
 
 main:load()  
+
 
 
 
