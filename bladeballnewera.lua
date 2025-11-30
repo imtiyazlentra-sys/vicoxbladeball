@@ -1474,7 +1474,143 @@ ConnectionsManager['Auto Parry'] = RunService.PreSimulation:Connect(function()
             return
         end
 
+         if not Ball:FindFirstChild("Visualizer") then
+    local vis = Instance.new("Part")
+    vis.Name = "Visualizer"
+    vis.Shape = Enum.PartType.Ball
+    vis.Size = Vector3.new(1.7, 1.7, 1.7)
+    vis.Color = Color3.fromRGB(255, 170, 0)
+    vis.Material = Enum.Material.Neon
+    vis.Anchored = true
+    vis.CanCollide = false
+    vis.Parent = Ball
 
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "Highlight"
+    highlight.Parent = vis
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0
+    highlight.FillColor = Color3.fromRGB(255, 255, 255)
+    highlight.Enabled = false
+
+
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "StatusGui"
+    billboard.Size = UDim2.new(6, 0, 1.4, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Adornee = vis
+    billboard.Parent = vis
+
+    local label = Instance.new("TextLabel")
+    label.Name = "StatusText"
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.TextStrokeTransparency = 0
+    label.TextScaled = true
+    label.Font = Enum.Font.GothamBold
+    label.Parent = billboard
+
+
+    local ring = Instance.new("Part")
+    ring.Name = "RangeRing"
+    ring.Anchored = true
+    ring.CanCollide = false
+    ring.Transparency = 0.5
+    ring.Color = Color3.fromRGB(0, 255, 255)
+    ring.Material = Enum.Material.Neon
+    ring.Size = Vector3.new(1, 0.1, 1)
+    ring.Shape = Enum.PartType.Cylinder
+    ring.Parent = vis
+
+
+    local attachment1 = Instance.new("Attachment")
+    attachment1.Parent = vis
+
+    local attachment2 = Instance.new("Attachment")
+    attachment2.Parent = LocalPlayer.Character.PrimaryPart
+
+    local beam = Instance.new("Beam")
+    beam.Name = "LineTracer"
+    beam.Attachment0 = attachment1
+    beam.Attachment1 = attachment2
+    beam.Width0 = 0.2
+    beam.Width1 = 0.2
+    beam.FaceCamera = true
+    beam.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255))
+    beam.Transparency = NumberSequence.new(0.4)
+    beam.Enabled = true
+    beam.Parent = vis
+end
+
+
+local vis = Ball.Visualizer
+vis.CFrame = CFrame.new(Ball.Position)
+
+local ring = vis.RangeRing
+ring.CFrame = CFrame.new(Ball.Position.X, workspace.FallenPartsDestroyHeight + 3, Ball.Position.Z) * CFrame.Angles(math.rad(90), 0, 0)
+local pr = ball_properties.parry_range
+ring.Size = Vector3.new(pr * 2, 0.1, pr * 2)
+
+
+local status = vis.StatusGui.StatusText
+local msg = {}
+
+
+local isTargeting = (Ball_Target == LocalPlayer.Name)
+
+if isTargeting then
+    table.insert(msg, "Targeting YOU!")
+else
+    table.insert(msg, "Not targeting you")
+end
+
+
+if Curved then
+    table.insert(msg, "Curved!")
+end
+
+
+local dist = ball_properties.distance
+if dist > 80 then
+    table.insert(msg, "(Far)")
+elseif dist > 40 then
+    table.insert(msg, "(Mid)")
+else
+    table.insert(msg, "(Close)")
+end
+
+
+if Parried then
+    table.insert(msg, "PARRIED!")
+end
+
+status.Text = "Ball: " .. table.concat(msg, " | ")
+
+local highlight = vis.Highlight
+
+if Parried then
+    vis.Color = Color3.fromRGB(0, 255, 0)
+    highlight.FillColor = Color3.fromRGB(0, 255, 0)
+    highlight.Enabled = true
+
+elseif isTargeting and not Curved then
+    -- dangerous ball
+    vis.Color = Color3.fromRGB(255, 0, 0)
+    highlight.FillColor = Color3.fromRGB(255, 0, 0)
+    highlight.Enabled = true
+
+elseif Curved then
+    -- curved
+    vis.Color = Color3.fromRGB(255, 170, 0)
+    highlight.FillColor = Color3.fromRGB(255, 170, 0)
+    highlight.Enabled = true
+
+else
+    -- neutral
+    vis.Color = Color3.fromRGB(255, 255, 255)
+    highlight.Enabled = false
+end
 
         local Ball_Target = Ball:GetAttribute('target')
         local One_Target = One_Ball and One_Ball:GetAttribute('target') or nil
@@ -6192,6 +6328,7 @@ end)
 
 
 main:load()  
+
 
 
 
