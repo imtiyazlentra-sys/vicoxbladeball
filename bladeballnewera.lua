@@ -1414,8 +1414,10 @@ Auto_Parry.Spam_Service = function()
     local compensation = 0 + math.pi
 	
     local Maximum_Spam_Distance = PingAdjustment + math.min(speed / 4, 200) + compensation
-    if not self.entityProps or not self.ballProps then return 0 end
-    if entityProps.Distance > Maximum_Spam_Distance or self.ballProps.Distance > Maximum_Spam_Distance or LocalPlayer:DistanceFromCharacter(closest.PrimaryPart.Position) > Maximum_Spam_Distance then return 0 end
+    local entityProps = Auto_Parry.GetEntityProps()
+    local ballProps = Auto_Parry.GetBallProps()
+    if not entityProps or not ballProps then return 0 end
+    if entityProps.Distance > Maximum_Spam_Distance or ballProps.Distance > Maximum_Spam_Distance or LocalPlayer:DistanceFromCharacter(closest.PrimaryPart.Position) > Maximum_Spam_Distance then return 0 end
     local Maximum_Speed = 5 - math.min(speed / 5, 5)
     local Maximum_Dot = math.clamp(dot, -1, 0) * Maximum_Speed
     local Spam_Accuracy = Maximum_Spam_Distance - Maximum_Dot
@@ -2570,10 +2572,7 @@ local SpamParry = rage:create_module({
                 local entityProps = Auto_Parry.GetEntityProps()
 
                 
-                local Spam_Accuracy = Auto_Parry.Spam_Service({
-                    ballProps =  ballProps,
-                    entityProps = entityProps
-                })
+                local Spam_Accuracy = Auto_Parry.Spam_Service()
 
                 if Spam_Accuracy <= 0 then
                     return
@@ -6091,6 +6090,7 @@ end)
 
 
 main:load()  
+
 
 
 
