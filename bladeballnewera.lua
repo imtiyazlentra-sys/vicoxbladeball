@@ -24,6 +24,7 @@ if not game:IsLoaded() then
 end
 
 print("yo user!, thanks for using my script. this script is beta i guess. my friend want to try this script for her own.")
+print("i want to say smth. sorry if the script is so bad ass, yo know im not good at this. just have fun with this")
 print("LETS GO")
 
 local Notification = loadstring(game:HttpGet("https://raw.githubusercontent.com/RudertTiktok/VICLIB/refs/heads/main/VICNOTIFY", true))()
@@ -2564,7 +2565,7 @@ local SpamParry = rage:create_module({
                 local Ball_Target = Ball:GetAttribute('target')
                 if not Ball_Target then return end
 
-                local ballProps = AutoParry.GetBallProps()
+                local ballProps = Auto_Parry.GetBallProps()
                 local entityProps = Auto_Parry.GetEntityProps()
 
                 
@@ -6089,6 +6090,7 @@ end)
 
 
 main:load()  
+
 
 
 
