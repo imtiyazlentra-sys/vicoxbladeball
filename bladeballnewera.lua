@@ -23,7 +23,8 @@ if not game:IsLoaded() then
     game.Loaded:Wait()
 end
 
-print("yo user!, thanks for using my script. this script is beta i guess. my friend want to try this script for her own.")
+print("yo user!, thanks for using my script. this script is beta i guess. my friend want to try this script for her own."
+print("...")
 print("i want to say smth. sorry if the script is so bad ass, yo know im not good at this. just have fun with this")
 print("LETS GO")
 
@@ -1099,53 +1100,50 @@ function Auto_Parry.Parry(Parry_Type)
     if tick() - lastParryTime < parryCooldown then 
         return false 
     end
+
+     local ball_properties = AutoParry.ball.properties
+        
     lastParryTime = tick()
-    local presses = getgenv().speeddo or 1
-    local parryData = Auto_Parry.Parry_Data(Parry_Type)
-    
-    if not FirstParryDone then
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-        task.wait(0.015)
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
-        getgenv().FirstParryDone = true
-        FirstParryDone = true
-        Notification.new("success", "Parry", "Parry Pressed!", true, 2)
-        return
-    end
-   
-    for i = 1, presses do
-        if not next(revertedRemotes) then
-            warn("[Parry] Remote belum tertangkap!")
-            return
+
+    local presses = getgenv().speeddo and isSpam or 1
+
+    if activeMethod == "F Key" then
+        for i = 1, presses do
+            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
         end
-        for remote, originalArgs in pairs(revertedRemotes) do
-                    local modifiedArgs = {
-                        originalArgs[1],
-                        originalArgs[2],
-                        originalArgs[3],
-                        parryData[2],
-                        parryData[3],
-                        parryData[4],
-                        originalArgs[7]
-                    }
-                    if remote:IsA("RemoteEvent") then
-                        remote:FireServer(unpack(modifiedArgs))
-                    elseif remote:IsA("RemoteFunction") then
-                        remote:InvokeServer(unpack(modifiedArgs))
-            end
-        end
+    else
+        local Parry_Data = Auto_Parry.Parry_Data(Parry_Type)
+        for remote, originalArgs in pairs(ParryRemotes) do
+        local modifiedArgs = {originalArgs[1], originalArgs[2], 0, Parry_Data[2], Parry_Data[3], Parry_Data[4]}
+        if remote:IsA("RemoteEvent") then
+            remote:FireServer(unpack(modifiedArgs))
+        elseif remote:IsA("RemoteFunction") then
+            remote:InvokeServer(unpack(modifiedArgs))
+                 end
+             end   
     end
-    
+
+    if Parries > 7 then
+        return false
+    end
+
     Parries += 1
-    AutoParry.ball.properties.parries += 1
+
+    ball_properties.parries += 1
+
     task.delay(0.35, function()
-        if Parries > 0 then Parries -= 1 end
-        if AutoParry.ball.properties.parries > 0 then
-            AutoParry.ball.properties.parries -= 1
+        if Parries > 0 then
+            Parries -= 1
+        end
+    end)
+     task.delay(0.35, function()
+        if ball_properties.parries > 0 then
+            ball_properties.parries -= 1
+            AutoParry.ball.properties.parries = ball_properties.parries
         end
     end)
 end
-
 
 local Lerp_Radians = 0
 local Last_Warping = tick()
@@ -6093,19 +6091,4 @@ end)
 
 
 main:load()  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
