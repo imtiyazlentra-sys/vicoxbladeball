@@ -1337,39 +1337,58 @@ ReplicatedStorage.Remotes.TimeHoleHoldBall.OnClientEvent:Connect(function(e, f)
 end)
 
 
-function Auto_Parry.Spam_Service(self)
+function Auto_Parry.Spam_Service()
     local ball = Auto_Parry.Get_Ball()
     if not ball or not ball:FindFirstChild("zoomies") then return 0 end
-
-    local closest = Auto_Parry.Closest_Player()
-    if not closest or not closest.Character or not closest.Character:FindFirstChild("HumanoidRootPart") then return 0 end
 
     local zoomies = ball.zoomies
     local velocity = zoomies.VectorVelocity
     local speed = velocity.Magnitude
-    if speed < 50 then return 0 end 
+    if speed < 50 then return 0 end
 
-    local root = LocalPlayer.Character.PrimaryPart
-    local targetRoot = closest.Character.HumanoidRootPart
+    -- AMAN BANGET — gak peduli Closest_Player() balikin apa
+    local closest = Auto_Parry.Closest_Player()
+    local enemyRoot = nil
 
-    local ballToPlayer = (root.Position - ball.Position).Unit
-    local dotToPlayer = ballToPlayer:Dot(velocity.Unit)
+    if closest then
+        if closest:IsA("Model") then
+            enemyRoot = closest:FindFirstChild("HumanoidRootPart")
+        elseif closest.Character then
+            enemyRoot = closest.Character:FindFirstChild("HumanoidRootPart")
+        end
+    end
 
+    -- Kalau masih gak ketemu, cari manual di workspace.Alive (pasti ketemu)
+    if not enemyRoot then
+        for _, v in pairs(workspace.Alive:GetChildren()) do
+            if v:IsA("Model") and v ~= LocalPlayer.Character and v:FindFirstChild("HumanoidRootPart") then
+                enemyRoot = v.HumanoidRootPart
+                break
+            end
+        end
+    end
 
+    if not enemyRoot then return 0 end
+
+    -- Pastikan karakter kita juga aman
+    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return 0 end
+    local myRoot = LocalPlayer.Character.HumanoidRootPart
+
+    -- Prediksi masa depan
     local ping = Players.LocalPlayer:GetNetworkPing() * 1000
-    local predictionTime = ping / 1800 
+    local predictionTime = ping / 1800
     local futureBallPos = ball.Position + velocity * predictionTime
-    local futureDistance = (root.Position - futureBallPos).Magnitude
+    local futureDistance = (myRoot.Position - futureBallPos).Magnitude
 
-
+    -- Dynamic spam distance
     local baseDistance = 28 + (ping * 0.055)
     local speedBonus = math.min(speed / 18, 32)
     local maxSpamDist = baseDistance + speedBonus
 
-
+    -- Movement multiplier (lari mundur + lawan lari ke kamu)
     local moveDir = LocalPlayer.Character.Humanoid.MoveDirection
-    local enemyDir = (targetRoot.Position - root.Position).Unit
-    local enemyMoveDir = closest.Character.Humanoid.MoveDirection
+    local enemyDir = (enemyRoot.Position - myRoot.Position).Unit
+    local enemyMoveDir = enemyRoot.Parent:FindFirstChild("Humanoid") and enemyRoot.Parent.Humanoid.MoveDirection or Vector3.new()
 
     local movementMultiplier = 1
     local now = tick()
@@ -1377,11 +1396,11 @@ function Auto_Parry.Spam_Service(self)
     getgenv().LastCloseContact = getgenv().LastCloseContact or 0
     getgenv().InCloseRange = getgenv().InCloseRange or false
 
-    local realDistance = (root.Position - targetRoot.Position).Magnitude
+    local realDistance = (myRoot.Position - enemyRoot.Position).Magnitude
     if realDistance <= 4 then
         getgenv().InCloseRange = true
     elseif getgenv().InCloseRange and realDistance > 5 then
-        getgenv().InCloseRange = false
+        getgenv.InCloseRange = false
         getgenv().LastCloseContact = now
     end
 
@@ -1398,12 +1417,12 @@ function Auto_Parry.Spam_Service(self)
 
     maxSpamDist = maxSpamDist * movementMultiplier
 
-
+    -- Dot bonus (bola dari belakang = spam lebih awal)
+    local ballToPlayer = (myRoot.Position - ball.Position).Unit
+    local dotToPlayer = ballToPlayer:Dot(velocity.Unit)
     local dotBonus = math.clamp(-dotToPlayer * 12, 0, 18)
 
-
     local spamAccuracy = maxSpamDist + dotBonus
-
 
     if futureDistance <= spamAccuracy then
         return spamAccuracy
@@ -6099,6 +6118,7 @@ end)
 
 
 main:load()  
+
 
 
 
