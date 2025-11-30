@@ -1109,14 +1109,13 @@ function Auto_Parry.Parry(Parry_Type)
 
     local presses = getgenv().speeddo and isSpam or 1
 
-    if not FirstParryDone then
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-        task.wait(0.015)
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
-        getgenv().FirstParryDone = true
-        FirstParryDone = true
-        Notification.new("success", "Parry", "Parry Pressed!", true, 2)   
-    else
+	local hasRemotes = false
+
+    if not hasRemotes then
+        mouse1click()
+		Notification.new("success", "Parry", "Parry Pressed!", true, 2)
+    end
+	
         local Parry_Data = Auto_Parry.Parry_Data(Parry_Type)
         for remote, originalArgs in pairs(ParryRemotes) do
         local modifiedArgs = {originalArgs[1], originalArgs[2], 0, Parry_Data[2], Parry_Data[3], Parry_Data[4]}
@@ -1126,7 +1125,6 @@ function Auto_Parry.Parry(Parry_Type)
             remote:InvokeServer(unpack(modifiedArgs))
                  end
              end   
-    end
 
     if Parries > 7 then
         return false
@@ -1223,7 +1221,7 @@ if Distance < Ball_Distance_Threshold then
     return false
 end
 
-local adjustedReachTime = Reach_Time + 0.03 
+local adjustedReachTime = Reach_Time + 0.03 -- compensação real de ping
 
 if Speed < 300 then
     if (tick() - Curving) < (adjustedReachTime / 1.2) then return true end
@@ -1295,6 +1293,7 @@ end
 
 return (Dot < Dot_Threshold) or backwardsCurveDetected
 end
+
 
 function Auto_Parry:Get_Ball_Properties()
     local Ball = Auto_Parry.Get_Ball()
@@ -1430,119 +1429,171 @@ Auto_Parry.Spam_Service = function()
     return Spam_Accuracy
 end
 
-ConnectionsManager['Auto Parry'] = RunService.PreSimulation:Connect(function()
-    if not Configs.auto_parry then return end
+ConnectionsManager['Auto Parry'] = RunService.Heartbeat:Connect(function()
+    if not Configs.auto_parry then
+        return
+    end
 
-    local balls = Auto_Parry.Get_Balls()
-    if #balls == 0 then return end
+    local One_Ball = Auto_Parry.Get_Ball()
+    local Balls = Auto_Parry.Get_Balls()
 
-    local ping = game:GetService('Stats').Network.ServerStatsItem['Data Ping']:GetValue()
-    local time = ping / 2000
-
-    for _, ball in pairs(balls) do
-        if not ball or not ball:FindFirstChild('zoomies') then continue end
-
-        local zoomies = ball.zoomies
-        local velocity = zoomies.VectorVelocity
-        local speed = velocity.Magnitude
-
-        AutoParry.Velocity_History = AutoParry.Velocity_History or {}
-        AutoParry.Dot_Histories = AutoParry.Dot_Histories or {}
-        AutoParry.Velocity_History[ball] = AutoParry.Velocity_History[ball] or {}
-        AutoParry.Dot_Histories[ball] = AutoParry.Dot_Histories[ball] or {}
-
-        table.insert(AutoParry.Velocity_History[ball], velocity)
-        if #AutoParry.Velocity_History[ball] > 5 then table.remove(AutoParry.Velocity_History[ball], 1) end
-
-        local dir = (LocalPlayer.Character.PrimaryPart.Position - ball.Position).Unit
-        local dot = dir:Dot(velocity.Unit)
-        table.insert(AutoParry.Dot_Histories[ball], dot)
-        if #AutoParry.Dot_Histories[ball] > 5 then table.remove(AutoParry.Dot_Histories[ball], 1) end
-
-
-        local ballFuture = ball.Position + velocity * time
-        local playerFuture = LocalPlayer.Character.PrimaryPart.Position + LocalPlayer.Character.PrimaryPart.Velocity * time
-        local distance = (playerFuture - ballFuture).Magnitude
-
-        local ballTarget = ball:GetAttribute('target')
-        if ballTarget ~= tostring(LocalPlayer) then
-            ball:GetAttributeChangedSignal('target'):Once(function() Parried = false end)
+    for _, Ball in pairs(Balls) do
+        if not Ball then
+            return
         end
-        if Parried then continue end
 
+        local ball_properties = AutoParry.ball.properties        
+
+        local Zoomies = Ball:FindFirstChild('zoomies')
+        if not Zoomies then
+            return
+        end
+
+        Ball:GetAttributeChangedSignal('target'):Once(function()
+            Parried = false
+        end)
+
+        if Parried then
+            return
+        end
+
+        local Ball_Target = Ball:GetAttribute('target')
+        local One_Target = One_Ball:GetAttribute('target')     
+        local Ping = Player.Entity.properties.ping
+        local Ping_Threshold = math.clamp(Ping / 10, 10, 18)
+        local player_properties = Player.Entity.properties        
         
-        local runtime = workspace:FindFirstChild("Runtime")
-        local tornado = runtime and runtime:FindFirstChild("Tornado")
-        if ball:FindFirstChild("AeroDynamicSlashVFX") then
+
+        local parry_accuracity = (Ping_Threshold + ball_properties.speed) * 1.55 / 11.4 + Ping_Threshold
+        local effectiveMultiplier = 1
+        if getgenv().RandomParryAccuracyEnabled then
+            if Speed < 200 then
+                effectiveMultiplier = 0.8 + (math.random(40, 100) - 1) * (0.35 / 99)
+            else
+                effectiveMultiplier = 0.7 + (math.random(1, 100) - 1) * (0.35 / 99)
+            end
+        end
+        parry_accuracity = parry_accuracity * effectiveMultiplier
+
+        if player_properties.is_moving then
+            parry_accuracity = parry_accuracity * 1.1
+        end
+
+        if player_properties.is_moving_backwards then
+            parry_accuracity = parry_accuracity * (1 / 1.05)
+        end
+
+        if Player.Entity.properties.ping >= 270 then
+            parry_accuracity = parry_accuracity * (1 + (Player.Entity.properties.ping / 500))
+        end        
+        
+        ball_properties.parry_range = (Ping_Threshold + ball_properties.speed) * 2.5 / 3 + Ping_Threshold
+        ball_properties.spam_range = (Ping_Threshold + ball_properties.speed) * 1.26 / 3.14     
+
+        if Player.Entity.properties.sword == 'Titan Blade' then
+            ball_properties.parry_range = ball_properties.parry_range + 11
+            ball_properties.spam_range += 2
+        end
+
+        AutoParry.target.current_changed = AutoParry.target.current_changed or false
+    AutoParry.target.direction_changed_on_cframe = AutoParry.target.direction_changed_on_cframe or false
+
+    if AutoParry.target.current ~= AutoParry.target.previous then
+        AutoParry.target.current_changed = true
+        AutoParry.target.previous = AutoParry.target.current
+    else
+        AutoParry.target.current_changed = false
+    end
+
+    if AutoParry.target.current then
+        local current_cframe = AutoParry.target.current.PrimaryPart and AutoParry.target.current.PrimaryPart.CFrame or CFrame.new()
+        if not AutoParry.target.last_cframe then
+            AutoParry.target.last_cframe = current_cframe
+        end
+        local current_direction = current_cframe.LookVector
+        local last_direction = AutoParry.target.last_cframe.LookVector
+        AutoParry.target.direction_changed_on_cframe = (current_direction - last_direction).Magnitude > 0.1
+        AutoParry.target.last_cframe = current_cframe
+    else
+        AutoParry.target.direction_changed_on_cframe = false
+    end                          
+
+        local Curved = Auto_Parry.Is_Curved()
+
+        if Ball:FindFirstChild('AeroDynamicSlashVFX') then
+            Debris:AddItem(Ball.AeroDynamicSlashVFX, 0)
             Tornado_Time = tick()
         end
-        if tornado and (tick() - (Tornado_Time or 0)) < ((tornado:GetAttribute("TornadoTime") or 1) + 0.314) then
-            continue
+
+        if Runtime:FindFirstChild('Tornado') then
+            if (tick() - Tornado_Time) < (Runtime.Tornado:GetAttribute("TornadoTime") or 1) + 0.314159 then
+                return
+            end
         end
 
-        local singularityCape = LocalPlayer.Character.PrimaryPart:FindFirstChild("SingularityCape")
-        if getgenv().Singularity_Detection and singularityCape then continue end
+       local distance_to_last_position = LocalPlayer:DistanceFromCharacter(ball_properties.last_position)
+         
 
-        local hotbar = LocalPlayer.PlayerGui:FindFirstChild("Hotbar")
-        local abilities = LocalPlayer.Character:FindFirstChild("Abilities")
-        local durationUI = hotbar and hotbar.Ability and hotbar.Ability.Duration and hotbar.Ability.Duration.Visible
-        local infinity = abilities and abilities:FindFirstChild("Infinity") and abilities.Infinity.Enabled
-        local timehole = abilities and abilities:FindFirstChild("Time Hole") and abilities["Time Hole"].Enabled
-
-        if getgenv().Infinity_Detection and durationUI and infinity then continue end
-        if getgenv().TimeHoleDetection and durationUI and timehole then continue end
-
-
-        local curved, backwards = Auto_Parry.Is_Curved(ball)
-
-
-        local closest = Auto_Parry.Closest_Player()
-        local distToOpp = closest and (LocalPlayer.Character.PrimaryPart.Position - closest.PrimaryPart.Position).Magnitude or 50
-
-
-        local capped = math.min(math.max(speed - 9.5, 0), 820)
-        local baseDiv = 2.4 + capped * 0.002
-        local adjPing = ping / 10
-        if getgenv().HighPingCompensation and ping > 150 then adjPing = adjPing * 1.5 end
-        local divisor = baseDiv * Speed_Divisor_Multiplier
-        local accuracy = adjPing + math.max(speed / divisor, 9.5)
-
-        if curved then
-            local red = backwards and 55 or 38
-            if speed > 700 then red += 30
-            elseif speed > 600 then red += 20
-            elseif speed > 500 then red += 14
-            elseif speed > 400 then red += 8 end
-            if backwards then red += 15 end
-            accuracy = accuracy - red
+        if One_Target == tostring(LocalPlayer) and Curved then
+            return
         end
 
-        local speedFactor = 0.8 + math.min(speed / 2000, 1)
-        local distFactor = 1 + (30 - math.min(distToOpp, 30)) / 30 * 0.8
-        accuracy = adjPing + math.max((speed / divisor) * (speedFactor * distFactor), 9.5)
+        if Ball:FindFirstChild("ComboCounter") then
+            return
+        end
 
-       
-        if ballTarget == tostring(LocalPlayer) and distance <= accuracy then
-            if tick() - (Last_Parry or 0) > 0.5 then
+        local Singularity_Cape = LocalPlayer.Character.PrimaryPart:FindFirstChild('SingularityCape')
+        if Singularity_Cape then
+            return
+        end
+
+        if getgenv().InfinityDetection and Infinity then
+            return
+        end
+
+        if getgenv().DeathSlashDetection and deathshit then
+            return
+        end
+
+        if getgenv().TimeHoleDetection and timehole then
+            return
+        end
+
+        if Ball_Target == tostring(LocalPlayer) and ball_properties.distance < ball_properties.parry_range then
+            if getgenv().AutoAbility and AutoAbility() then
+                return
+            end
+        end
+
+        if Ball_Target == tostring(LocalPlayer) and ball_properties.distance < ball_properties.parry_range and ball_properties.distance < parry_accuracity then
+            if getgenv().CooldownProtection and cooldownProtection() then
+                return
+            end
+
+            local Parry_Time = os.clock()
+            local Time_View = Parry_Time - (Last_Parry)
+            if Time_View > 0.5 then
                 Auto_Parry.Parry_Animation()
             end
 
             if getgenv().AutoParryKeypress then
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-                task.wait()
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+                VirtualInputService:SendKeyEvent(true, Enum.KeyCode.F, false, nil)
             else
-                Auto_Parry.Parry(Selected_Parry_Type or "Camera")
+                Auto_Parry.Parry(Selected_Parry_Type)
             end
 
-            Last_Parry = tick()
+            Last_Parry = Parry_Time
             Parried = true
-            Parries += 1
-            task.delay(0.5, function() Parries -= 1 end)
-            task.delay(1.1, function() Parried = false end)
         end
-    end
-end)
+
+        local Last_Parrys = tick()
+
+                             repeat
+                            RunService.PreSimulation:Wait()
+                        until (tick() - Last_Parrys) >= 1 or not Parried
+                        Parried = false
+                    end
+                end)
 
 local Balls = workspace:WaitForChild('Balls')
 local CurrentBall = nil
@@ -2327,6 +2378,7 @@ do
         section = 'left',
         callback = function(value: boolean)
             Configs.auto_parry = value  
+
             if getgenv().AutoParryNotify then
                 Library.SendNotification({
                     title = "Module Notification",
@@ -2457,14 +2509,6 @@ do
             end
         end
     })
-
-	module:create_checkbox({
-    title = "High Ping Compensation",
-    flag = "HighPingCompensation",
-    callback = function(v)
-        HighPingCompensation = v
-    end
-})
 
     module:create_checkbox({
         title = "Infinity Detection",
@@ -6095,6 +6139,7 @@ end)
 
 
 main:load()  
+
 
 
 
