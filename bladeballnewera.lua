@@ -898,12 +898,15 @@ end
 
 Auto_Parry.Spam = Auto_Parry.Spam or {
     parries = 0,
-    last_hit = 0,
+    last_hit = tick(),
     speed = 0,
     old_speed = 0,
     maximum_speed = 0,
     entity_distance = 0,
-    ball_distance = 0
+    ball_distance = 0,
+    last_position_distance = 0,
+    range = 0,
+    spam_accuracy = 34
 }
 
 function Auto_Parry.Play_Animation(v)
@@ -1350,35 +1353,34 @@ end)
 
 function Auto_Parry:is_spam()
     local ball = Auto_Parry.Get_Ball()
-    if not ball or not ball:FindFirstChild("zoomies") then 
-        Auto_Parry.Spam.parries = 0 
-        return false 
-    end
-
-    local closest = Auto_Parry.Closest_Player()
-    if not closest or not closest:FindFirstChild("HumanoidRootPart") then 
-        Auto_Parry.Spam.parries = 0 
-        return false 
-    end
-
-    local myChar = LocalPlayer.Character
-    if not myChar or not myChar:FindFirstChild("HumanoidRootPart") or myChar.Parent == workspace.Dead then
+    if not ball or not ball:FindFirstChild("zoomies") then
         Auto_Parry.Spam.parries = 0
         return false
     end
 
-    local targetAttr = ball:GetAttribute("target")
-    if not targetAttr or targetAttr ~= tostring(LocalPlayer) then 
-        Auto_Parry.Spam.parries = 0 
-        return false 
+    local myChar = LocalPlayer.Character
+    if not myChar or not myChar:FindFirstChild("HumanoidRootPart") or myChar.Parent == workspace.Dead then
+        return false
     end
+
+    local targetAttr = ball:GetAttribute("target")
+    if not targetAttr or targetAttr ~= tostring(LocalPlayer) then
+        Auto_Parry.Spam.parries = 0
+        return false
+    end
+
+    local closest = Auto_Parry.Closest_Player()
+    if not closest or not closest:FindFirstChild("HumanoidRootPart") then
+        return false
+    end
+
+    local enemyRoot = closest:FindFirstChild("HumanoidRootPart")
+    local myRoot = myChar.HumanoidRootPart
+    local ballPos = ball.Position
 
     local zoomies = ball.zoomies
     local velocity = zoomies.VectorVelocity
     local speed = velocity.Magnitude
-    local ballPos = ball.Position
-    local myRoot = myChar.HumanoidRootPart
-    local enemyRoot = closest:FindFirstChild("HumanoidRootPart") or closest.PrimaryPart
 
     local ball_distance = (myRoot.Position - ballPos).Magnitude
     local entity_distance = (myRoot.Position - enemyRoot.Position).Magnitude
@@ -1386,59 +1388,63 @@ function Auto_Parry:is_spam()
 
     Auto_Parry.Spam.old_speed = Auto_Parry.Spam.speed or speed
     Auto_Parry.Spam.speed = speed
-    Auto_Parry.Spam.maximum_speed = math.max(Auto_Parry.Spam.maximum_speed, speed)
+    Auto_Parry.Spam.maximum_speed = math.max(Auto_Parry.Spam.maximum_speed or 0, speed)
     Auto_Parry.Spam.entity_distance = entity_distance
     Auto_Parry.Spam.ball_distance = ball_distance
 
     local ping = Players.LocalPlayer:GetNetworkPing() * 1000
-    local distance_threshold = 19 + (ping / 10)
+    local distance_threshold = 19.05 + (ping / 10)
 
+    if workspace.CurrentCamera then
+        local cam = workspace.CurrentCamera.CFrame
+        local camDir = cam.LookVector
+        local toEnemy = (enemyRoot.Position - cam.Position).Unit
+        local dotEnemy = camDir:Dot(toEnemy)
 
-    if Auto_Parry.Spam.parries >= 4 then
-        if entity_distance > distance_threshold + 5 then
-            Auto_Parry.Spam.parries = 1
-            return false
+        for _, plr in pairs(workspace.Alive:GetChildren()) do
+            if plr ~= closest and plr ~= myChar and plr:FindFirstChild("HumanoidRootPart") then
+                local otherDot = camDir:Dot((plr.HumanoidRootPart.Position - cam.Position).Unit)
+                if otherDot > dotEnemy + 0.12 then
+                    return false
+                end
+            end
         end
     end
 
+    local lastTarget = getgenv().LastBallTarget
+    local currentTarget = ball:GetAttribute("target")
+    if lastTarget and lastTarget ~= currentTarget then
+        Auto_Parry.Spam.parries = 0
+    end
+    getgenv().LastBallTarget = currentTarget
 
-    local curved, _ = Auto_Parry.Is_Curved(ball)
-    if curved and speed > 300 then
+
+    if speed < 18 then
+        Auto_Parry.Spam.parries = 1
+        return false
+    end
+
+    if entity_distance > 48 or ball_distance > 52 then
+        Auto_Parry.Spam.parries = math.max(1, Auto_Parry.Spam.parries - 1)
+        return false
+    end
+
+    if (tick() - Auto_Parry.Spam.last_hit) > 0.9 and entity_distance > distance_threshold + 3 then
+        Auto_Parry.Spam.parries = 1
+        return false
+    end
+
+
+    local curved = Auto_Parry.Is_Curved(ball)
+    if curved and speed > 350 then
         if Auto_Parry.Spam.parries > 3 then
             Auto_Parry.Spam.parries = 2
             return false
         end
     end
 
-    
-    if math.abs(speed - Auto_Parry.Spam.old_speed) < 6 and entity_distance > distance_threshold and speed < 70 then
-        Auto_Parry.Spam.parries = math.max(1, Auto_Parry.Spam.parries - 1)
-        return false
-    end
 
-
-    if speed < 20 then
-        Auto_Parry.Spam.parries = 1
-        return false
-    end
-
-
-    if entity_distance > 50 or ball_distance > 55 then
-        Auto_Parry.Spam.parries = 1
-        return false
-    end
-
-    if workspace.CurrentCamera then
-        local cam = workspace.CurrentCamera.CFrame
-        local toEnemy = (enemyRoot.Position - cam.Position).Unit
-        local toMe = (myRoot.Position - cam.Position).Unit
-        if cam.LookVector:Dot(toEnemy) > cam.LookVector:Dot(toMe) + 0.15 then
-            return false
-        end
-    end
-
-
-    if ball_distance <= 36 and entity_distance <= 42 then
+    if ball_distance <= 36 and entity_distance <= 40 then
         Auto_Parry.Spam.last_hit = tick()
         Auto_Parry.Spam.parries = Auto_Parry.Spam.parries + 1
         return true
@@ -1448,8 +1454,8 @@ function Auto_Parry:is_spam()
 end
 
 function Auto_Parry.Spam_Service()
-    if Auto_Parry:is_spam() and Auto_Parry.Spam.parries <= (ParryThreshold or 3) then
-        return 50 
+    if Auto_Parry:is_spam() and Auto_Parry.Spam.parries <= (ParryThreshold or 3.5) then
+        return 50
     end
     return 0
 end
@@ -2570,7 +2576,7 @@ do
     local SpamParry = rage:create_module({
         title = 'Auto Spam Parry',
         flag = 'Auto_Spam_Parry',
-        description = 'Automatically spam parries ball (NO ERROR 2025)',
+        description = 'Auto Spam Parry S+ (TOP 1 GLOBAL 2025)',
         section = 'right',
         callback = function(value: boolean)
             Configs.auto_spam_parry = value
@@ -2586,7 +2592,7 @@ do
             if value then
                 ConnectionsManager['Auto Spam'] = RunService.Heartbeat:Connect(function()
                     if not Configs.auto_spam_parry then return end
-                    if Parries >= (ParryThreshold or 2.5) then return end
+                    if Parries >= (ParryThreshold or 3) then return end
                     if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
                     if LocalPlayer.Character:GetAttribute("Pulsed") then return end
 
@@ -2594,14 +2600,11 @@ do
                     if not ball or not ball:FindFirstChild("zoomies") then return end
                     if not ball:GetAttribute("target") or ball:GetAttribute("target") ~= tostring(LocalPlayer) then return end
 
-                    -- PENYE BAB ERROR DI SINI — DIAMANKAN 3 LAPIS
+           
                     local closest = Auto_Parry.Closest_Player()
                     if not closest then return end
-                    if not closest:FindFirstChild("HumanoidRootPart") then return end
-                    -- Kalau masih Model lama, langsung ambil HumanoidRootPart dari workspace.Alive
                     local enemyRoot = closest:FindFirstChild("HumanoidRootPart")
                     if not enemyRoot then
-                        -- Cadangan: cari ulang di workspace.Alive
                         for _, v in pairs(workspace.Alive:GetChildren()) do
                             if v ~= LocalPlayer.Character and v:FindFirstChild("HumanoidRootPart") then
                                 enemyRoot = v.HumanoidRootPart
@@ -2611,15 +2614,9 @@ do
                     end
                     if not enemyRoot then return end
 
-                    local spamAccuracy = Auto_Parry.Spam_Service() or 0
-                    if spamAccuracy <= 0 then return end
-
-                    local myRoot = LocalPlayer.Character.HumanoidRootPart
-                    local distanceToBall = (myRoot.Position - ball.Position).Magnitude
-                    local distanceToEnemy = (myRoot.Position - enemyRoot.Position).Magnitude
-
-                    if distanceToBall <= spamAccuracy + 8 and distanceToEnemy <= spamAccuracy + 18 then
-                        if tick() - (Last_Spam or 0) < 0.065 then return end
+              
+                    if Auto_Parry:is_spam() then
+                        if tick() - (Last_Spam or 0) < 0.07 then return end
                         Last_Spam = tick()
 
                         if getgenv().SpamParryKeypress then
@@ -2657,9 +2654,9 @@ do
     SpamParry:create_slider({
         title = "Parry Threshold",
         flag = "Parry_Threshold",
-        maximum_value = 4,
+        maximum_value = 5,
         minimum_value = 1,
-        value = 2.5,
+        value = 3,
         round_number = false,
         callback = function(value)
             ParryThreshold = value
@@ -6141,6 +6138,7 @@ end)
 
 
 main:load()  
+
 
 
 
